@@ -16,7 +16,7 @@ conversational RAG interface for querying everything you've processed.
 - **PDF summarization** — Gemma 4 E4B GGUF (primary), T5-small (fallback),
   and template extraction (zero-dependency fallback).
 - **RAG Q&A** — FAISS + MiniLM-L6-v2 embeddings over uploaded content,
-  answered by Ollama/llama3.2 with rule-based fallback.
+  answered by Groq with rule-based fallback.
 - **Chat history** — persistent conversation threads stored locally as JSON.
 - **Single-page frontend** — six tabs: Dashboard, Processing, Analytics,
   Transcript, Summaries, History.
@@ -51,8 +51,7 @@ conversational RAG interface for querying everything you've processed.
 └─────────────────────────────────────────────────────────────────┘
                           │
                 ┌─────────▼─────────┐
-                │  Ollama daemon    │
-                │  (llama3.2)       │
+                │  Groq daemon      │
                 └───────────────────┘
 ```
 
@@ -111,7 +110,7 @@ conversational RAG interface for querying everything you've processed.
 |-------------|-------|
 | Python 3.11+ | 3.11 recommended for all ML dependencies |
 | ffmpeg | Must be on `PATH` — used for audio/video conversion |
-| Ollama | Required for RAG Q&A — install from https://ollama.com |
+| Groq | Required for RAG Q&A — get API key from [text](https://console.groq.com/keys) |
 | HuggingFace account | Required for Pyannote diarization model |
 
 ### Backend Setup
@@ -228,7 +227,7 @@ experiments that informed the production implementation.
 | `evaluation_lab/` | 1–2 | WER benchmarks (base ~12%, small ~9%) |
 | `summarization_lab/` | 3 | Gemma ROUGE-L 18 pts > T5-small |
 | `emotion_lab/` | 4 | go_emotions 28-class over binary sentiment |
-| `rag_lab/` | 5 | Validated MiniLM + FAISS; replaced Flan-T5 with Ollama |
+| `rag_lab/` | 5 | Validated MiniLM + FAISS; replaced Flan-T5 with Groq |
 
 See [research/README.md](research/README.md) for detailed lab documentation.
 
@@ -317,16 +316,6 @@ running as background services.
 
 ---
 
-## Contributors
-
-This project was built as a graduation project at [University Name].
-
-| Role | Contribution |
-|------|-------------|
-| Ahmed | Diarization research, emotion analysis, backend architecture |
-| [Team] | Frontend, RAG module, PDF summarization |
-
----
 
 ## Architecture Decision Record
 
