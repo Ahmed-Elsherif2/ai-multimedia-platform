@@ -1,0 +1,21 @@
+Reset Data:
+
+cd backend
+
+# 1. Delete database
+Remove-Item data\platform.db -Force -ErrorAction SilentlyContinue
+
+# 2. Delete uploads folder
+Remove-Item -Recurse -Force data\uploads -ErrorAction SilentlyContinue
+
+# 3. Delete results folder
+Remove-Item -Recurse -Force data\results -ErrorAction SilentlyContinue
+
+# 4. Delete status folder
+Remove-Item -Recurse -Force data\status -ErrorAction SilentlyContinue
+
+# 5. Recreate folders
+New-Item -ItemType Directory -Force data\uploads, data\results, data\status | Out-Null
+
+# 6. Done!
+Write-Host "✅ All data cleared!" -ForegroundColor Green

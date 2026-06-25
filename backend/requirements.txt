@@ -1,0 +1,42 @@
+# ============================================================
+# AI Multimedia Platform — Production Backend Dependencies
+# ============================================================
+
+# ── Web framework ────────────────────────────────────────────
+flask==3.1.0
+flask-cors==5.0.0
+python-dotenv==1.0.1
+gunicorn==23.0.0
+
+# ── Core ML ─────────────────────────────────────────────────
+torch==2.3.1
+torchaudio==2.3.1
+transformers==4.46.3
+accelerate==1.2.1
+tokenizers==0.20.3
+
+# ── Audio processing ─────────────────────────────────────────
+openai-whisper==20240930
+pyannote.audio==3.1.1
+librosa==0.10.2
+soundfile==0.12.1
+ffmpeg-python==0.2.0
+
+# ── Embeddings & vector search ──────────────────────────────
+sentence-transformers==3.3.1
+faiss-cpu==1.9.0
+
+# ── PDF processing ──────────────────────────────────────────
+pdfplumber==0.11.4
+
+# ── LLM API ─────────────────────────────────────────────────
+groq==0.11.0
+
+# ── Authentication ──────────────────────────────────────────
+bcrypt==4.2.0
+
+# ── Utilities ────────────────────────────────────────────────
+numpy==1.26.4
+requests==2.32.3
+tqdm==4.66.5
+huggingface-hub==0.26.2

@@ -1,0 +1,1335 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Multimedia Platform - Demo</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+  <style>
+    * { font-family: 'Inter', sans-serif; box-sizing: border-box; }
+
+    body {
+      background: #060D1A;
+      color: #E2E8F0;
+      min-height: 100vh;
+      background-image:
+        radial-gradient(ellipse 80% 50% at 50% -20%, rgba(45,212,191,0.08) 0%, transparent 60%),
+        radial-gradient(ellipse 60% 40% at 80% 80%, rgba(99,102,241,0.06) 0%, transparent 50%);
+    }
+
+    /* ── scrollbars ── */
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(45,212,191,0.3); border-radius: 4px; }
+    ::-webkit-scrollbar-thumb:hover { background: rgba(45,212,191,0.6); }
+
+    /* ── glass cards ── */
+    .glass {
+      background: rgba(255,255,255,0.03);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255,255,255,0.07);
+    }
+    .glass-hover:hover {
+      background: rgba(255,255,255,0.055);
+      border-color: rgba(45,212,191,0.25);
+    }
+    .glass-active {
+      background: rgba(45,212,191,0.06) !important;
+      border-color: rgba(45,212,191,0.35) !important;
+      box-shadow: 0 0 20px rgba(45,212,191,0.08);
+    }
+
+    /* ── gradient text ── */
+    .grad-text {
+      background: linear-gradient(135deg, #2DD4BF, #818CF8);
+      background-clip: text;
+      -webkit-background-clip: text;
+      color: transparent;
+      -webkit-text-fill-color: transparent;
+    }
+
+    /* ── nav tab ── */
+    .tab-active {
+      color: #2DD4BF !important;
+      position: relative;
+    }
+    .tab-active::after {
+      content: '';
+      position: absolute;
+      bottom: -18px;
+      left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, #2DD4BF, #818CF8);
+      border-radius: 2px;
+    }
+
+    /* ── buttons ── */
+    .btn-primary {
+      background: linear-gradient(135deg, #2DD4BF, #0EA5E9);
+      color: #000;
+      font-weight: 600;
+      transition: all 0.2s;
+      box-shadow: 0 4px 20px rgba(45,212,191,0.25);
+    }
+    .btn-primary:hover {
+      box-shadow: 0 4px 30px rgba(45,212,191,0.45);
+      transform: translateY(-1px);
+    }
+    .btn-secondary {
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.1);
+      transition: all 0.2s;
+    }
+    .btn-secondary:hover {
+      background: rgba(255,255,255,0.1);
+      border-color: rgba(45,212,191,0.4);
+    }
+
+    /* ── logo glow ── */
+    .logo-icon {
+      background: linear-gradient(135deg, #2DD4BF, #818CF8);
+      box-shadow: 0 0 20px rgba(45,212,191,0.4);
+    }
+
+    /* ── status dot ── */
+    .status-online { background: #10B981; box-shadow: 0 0 8px #10B981; }
+    .status-offline { background: #EF4444; }
+
+    /* ── conversation bubbles ── */
+    .bubble-left {
+      background: rgba(45,212,191,0.08);
+      border: 1px solid rgba(45,212,191,0.2);
+      border-radius: 4px 18px 18px 18px;
+    }
+    .bubble-right {
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 18px 4px 18px 18px;
+    }
+    .bubble-other {
+      background: rgba(249,115,22,0.08);
+      border: 1px solid rgba(249,115,22,0.2);
+      border-radius: 4px 18px 18px 18px;
+    }
+
+    /* ── progress bar ── */
+    .progress-track { background: rgba(255,255,255,0.06); border-radius: 99px; }
+    .progress-fill {
+      background: linear-gradient(90deg, #2DD4BF, #818CF8);
+      border-radius: 99px;
+      transition: width 0.5s ease;
+    }
+
+    /* ── emotion bar ── */
+    .emo-bar { background: rgba(255,255,255,0.05); border-radius: 99px; overflow: hidden; }
+    .emo-fill { height: 100%; border-radius: 99px; transition: width 0.8s cubic-bezier(.4,0,.2,1); }
+
+    /* ── chat messages ── */
+    .chat-scroll { overflow-y: auto; scroll-behavior: smooth; }
+    .msg-user { background: linear-gradient(135deg, #2DD4BF, #0EA5E9); color: #000; border-radius: 18px 4px 18px 18px; }
+    .msg-bot { background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.08); border-radius: 4px 18px 18px 18px; }
+
+    /* ── pipeline step ── */
+    .step-pending { color: #64748B; }
+    .step-running { color: #F59E0B; animation: pulse-text 1.5s infinite; }
+    .step-done { color: #2DD4BF; }
+    .step-fail { color: #EF4444; }
+    @keyframes pulse-text { 0%,100%{opacity:1} 50%{opacity:0.5} }
+
+    /* ── tag badge ── */
+    .badge-teal { background: rgba(45,212,191,0.12); color: #2DD4BF; border: 1px solid rgba(45,212,191,0.25); }
+    .badge-indigo { background: rgba(99,102,241,0.12); color: #818CF8; border: 1px solid rgba(99,102,241,0.25); }
+    .badge-purple { background: rgba(168,85,247,0.12); color: #C084FC; border: 1px solid rgba(168,85,247,0.25); }
+
+    /* ── modal ── */
+    .modal-bg { background: rgba(0,0,0,0.7); backdrop-filter: blur(8px); }
+    .modal-box { animation: modalPop .25s cubic-bezier(.34,1.56,.64,1); }
+    @keyframes modalPop { from{transform:scale(0.88);opacity:0} to{transform:scale(1);opacity:1} }
+
+    /* ── dropdown (opens above trigger) ── */
+    .dropdown-menu { animation: fadeUp .18s ease; }
+    @keyframes fadeUp { from{opacity:0;transform:translateY(8px)} to{opacity:1;transform:translateY(0)} }
+
+    /* ── summary card accent ── */
+    .accent-teal { border-left: 3px solid #2DD4BF; }
+    .accent-indigo { border-left: 3px solid #818CF8; }
+    .accent-slate { border-left: 3px solid #475569; }
+
+    /* ── speaker avatar ── */
+    .spk-avatar {
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 10px; font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    /* ── glow ring on upload btn ── */
+    .upload-ring:focus-within, .upload-ring:hover {
+      box-shadow: 0 0 0 3px rgba(45,212,191,0.2);
+    }
+
+    /* ── stats card ── */
+    .stat-card { transition: transform .2s, box-shadow .2s; }
+    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(45,212,191,0.1); }
+
+    /* ── file item ── */
+    .file-item { transition: all .15s; }
+    .file-item:hover .file-delete { opacity: 1 !important; }
+  </style>
+</head>
+<body class="min-h-screen">
+
+  <!-- ════════════════ AUTH SCREENS ════════════════ -->
+
+  <!-- Login Screen -->
+  <div id="loginScreen" class="fixed inset-0 flex items-center justify-center bg-[#060D1A] z-[9999]">
+    <div class="glass rounded-2xl p-8 w-96 border border-white/[0.1]">
+      <div class="flex items-center justify-center mb-4">
+        <div class="w-12 h-12 rounded-xl logo-icon flex items-center justify-center text-black font-bold text-lg">AI</div>
+      </div>
+      <h1 class="text-2xl font-bold text-white mb-2 text-center">AI Multimedia Platform</h1>
+      <p class="text-slate-400 text-sm mb-6 text-center">Sign in to your account</p>
+      <div class="space-y-4">
+        <input id="loginUsername" type="text" placeholder="Username" class="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-400/60 text-white">
+        <input id="loginPassword" type="password" placeholder="Password" class="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-400/60 text-white">
+        <button onclick="loginUser()" class="w-full btn-primary py-3 rounded-xl font-semibold">Sign In</button>
+        <p class="text-center text-sm text-slate-400">Don't have an account? <a onclick="showRegister()" class="text-teal-400 hover:underline cursor-pointer">Register</a></p>
+        <div id="loginError" class="text-red-400 text-sm text-center hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Register Screen -->
+  <div id="registerScreen" class="hidden fixed inset-0 flex items-center justify-center bg-[#060D1A] z-[9999]">
+    <div class="glass rounded-2xl p-8 w-96 border border-white/[0.1]">
+      <div class="flex items-center justify-center mb-4">
+        <div class="w-12 h-12 rounded-xl logo-icon flex items-center justify-center text-black font-bold text-lg">AI</div>
+      </div>
+      <h1 class="text-2xl font-bold text-white mb-2 text-center">Create Account</h1>
+      <p class="text-slate-400 text-sm mb-6 text-center">Join the platform</p>
+      <div class="space-y-4">
+        <input id="regUsername" type="text" placeholder="Username (min 3 chars)" class="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-400/60 text-white">
+        <input id="regPassword" type="password" placeholder="Password (min 6 chars)" class="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-400/60 text-white">
+        <button onclick="registerUser()" class="w-full btn-primary py-3 rounded-xl font-semibold">Register</button>
+        <p class="text-center text-sm text-slate-400">Already have an account? <a onclick="showLogin()" class="text-teal-400 hover:underline cursor-pointer">Sign In</a></p>
+        <div id="registerError" class="text-red-400 text-sm text-center hidden"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Main App (hidden initially) -->
+  <div id="mainApp" class="flex flex-col h-screen hidden">
+
+  <!-- ════════════════ HEADER ════════════════ -->
+  <header class="relative z-50 h-14 border-b border-white/[0.06] flex items-center px-6 justify-between flex-shrink-0 overflow-visible" style="background:rgba(6,13,26,0.95);backdrop-filter:blur(20px);">
+    <!-- Logo + Nav -->
+    <div class="flex items-center gap-10">
+      <div class="flex items-center gap-3">
+        <div class="w-8 h-8 rounded-xl logo-icon flex items-center justify-center text-black font-bold text-sm">AI</div>
+        <span class="font-semibold text-base tracking-tight">AI Platform</span>
+        <span class="badge-teal text-[10px] px-2 py-0.5 rounded-full font-semibold tracking-widest">DEMO</span>
+      </div>
+      <nav class="flex items-center gap-7 text-sm font-medium text-slate-400">
+        <a onclick="switchTab(0)" id="tab-0" class="tab-active cursor-pointer hover:text-white transition-colors">Dashboard</a>
+        <a onclick="switchTab(1)" id="tab-1" class="cursor-pointer hover:text-white transition-colors">Processing</a>
+        <a onclick="switchTab(2)" id="tab-2" class="cursor-pointer hover:text-white transition-colors">Analytics</a>
+        <a onclick="switchTab(3)" id="tab-3" class="cursor-pointer hover:text-white transition-colors">Transcript</a>
+        <a onclick="switchTab(4)" id="tab-4" class="cursor-pointer hover:text-white transition-colors">Summaries</a>
+        <a onclick="switchTab(5)" id="tab-5" class="cursor-pointer hover:text-white transition-colors">History</a>
+      </nav>
+    </div>
+    <!-- Right actions -->
+    <div class="flex items-center gap-5">
+      <div class="relative">
+        <button onclick="toggleDropdown('bellDropdown')" class="w-8 h-8 rounded-lg btn-secondary flex items-center justify-center text-slate-400 hover:text-white">
+          <i class="fa-solid fa-bell text-sm"></i>
+        </button>
+        <div id="bellDropdown" class="dropdown-menu hidden absolute right-0 bottom-full mb-2 w-72 glass rounded-2xl shadow-2xl p-4 text-sm z-50 border border-white/[0.08]">
+          <div class="font-semibold mb-3 text-white">Notifications</div>
+          <div id="bellContent" class="space-y-3 text-slate-400"></div>
+        </div>
+      </div>
+      <div class="relative">
+        <button onclick="toggleDropdown('fileDropdown')" class="w-8 h-8 rounded-lg btn-secondary flex items-center justify-center text-slate-400 hover:text-white">
+          <i class="fa-solid fa-folder text-sm"></i>
+        </button>
+        <div id="fileDropdown" class="dropdown-menu hidden absolute right-0 bottom-full mb-2 w-80 glass rounded-2xl shadow-2xl p-4 text-sm z-50 border border-white/[0.08]">
+          <div class="font-semibold mb-3 text-white">Files in this chat</div>
+          <div id="currentChatFiles" class="space-y-2 max-h-64 overflow-y-auto"></div>
+        </div>
+      </div>
+      <div class="relative">
+        <button onclick="toggleDropdown('userDropdown')" class="flex items-center gap-2 cursor-pointer">
+          <div class="w-8 h-8 rounded-xl logo-icon flex items-center justify-center text-black font-bold text-sm">D</div>
+          <i class="fa-solid fa-caret-down text-xs text-slate-500"></i>
+        </button>
+        <div id="userDropdown" class="dropdown-menu hidden absolute right-0 bottom-full mb-2 w-52 glass rounded-2xl shadow-2xl p-4 text-sm z-50 border border-white/[0.08]">
+          <div class="text-slate-400 px-2 mb-3 text-xs uppercase tracking-wider">Account</div>
+          <div id="userDisplayName" class="px-2 py-1.5 font-medium text-white mb-3">Guest</div>
+          <button onclick="resetDemo()" class="w-full flex items-center gap-3 cursor-pointer hover:bg-red-500/10 p-2 rounded-xl text-red-400 text-left transition-colors">
+            <i class="fa-solid fa-rotate-left text-sm"></i> Reset Demo
+          </button>
+          <hr class="border-white/10 my-2">
+          <button onclick="logoutUser()" class="w-full flex items-center gap-3 cursor-pointer hover:bg-red-500/10 p-2 rounded-xl text-red-400 text-left transition-colors border-0 bg-transparent text-sm">
+            <i class="fa-solid fa-sign-out-alt text-sm"></i> Logout
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- ════════════════ DASHBOARD TAB ════════════════ -->
+  <div id="content-0" class="flex-1 p-5 flex flex-col min-h-0 overflow-hidden">
+    <div class="grid grid-cols-12 gap-5 h-full">
+
+      <!-- Left panel -->
+      <div class="col-span-3 flex flex-col gap-4 h-full min-h-0">
+        <!-- Upload card -->
+        <div class="glass rounded-2xl p-5 flex-shrink-0">
+          <h2 class="font-semibold mb-4 flex items-center gap-2">
+            <i class="fa-solid fa-cloud-arrow-up text-teal-400 text-sm"></i> Upload Content
+          </h2>
+          <input type="file" id="audioFileInput" accept="audio/*,video/*,.mp4,.mp3,.wav,.m4a,.mov,.avi,.mkv,.webm,.ogg,.flac" class="hidden" multiple />
+          <button onclick="document.getElementById('audioFileInput').click()" class="upload-ring w-full btn-primary rounded-xl py-2.5 flex items-center justify-center gap-2 mb-2.5 text-sm transition-all">
+            <i class="fa-solid fa-waveform-lines text-sm"></i> Audio / Video
+          </button>
+          <input type="file" id="pdfFileInput" accept=".pdf" class="hidden" multiple />
+          <button onclick="document.getElementById('pdfFileInput').click()" class="upload-ring w-full rounded-xl py-2.5 flex items-center justify-center gap-2 mb-2.5 text-sm btn-secondary text-slate-300 transition-all" style="border-color:rgba(129,140,248,0.4)">
+            <i class="fa-solid fa-file-pdf text-indigo-400 text-sm"></i> PDF Document
+          </button>
+          <button onclick="processContent()" id="processBtn" class="w-full rounded-xl py-2.5 text-sm cursor-not-allowed opacity-40 bg-white/5 border border-white/10 text-slate-400 transition-all">
+            <i class="fa-solid fa-bolt mr-1.5"></i> Process Content
+          </button>
+        </div>
+
+        <!-- Activity feed -->
+        <div class="glass rounded-2xl p-5 flex-1 flex flex-col min-h-0">
+          <h3 class="text-xs font-semibold mb-3 text-slate-500 uppercase tracking-wider flex-shrink-0">Live Activity</h3>
+          <div id="activityFeed" class="flex-1 min-h-0 chat-scroll space-y-2 text-xs">
+            <div class="text-slate-600 text-center py-6">
+              <i class="fa-solid fa-inbox text-2xl mb-2 block opacity-40"></i>
+              Upload a file to begin
+            </div>
+          </div>
+        </div>
+
+        <!-- Backend status -->
+        <div class="glass rounded-2xl p-3 flex-shrink-0">
+          <div class="text-[10px] text-slate-600 mb-1">localhost:5000</div>
+          <div id="backendStatus" class="text-xs flex items-center gap-2">
+            <span class="w-2 h-2 rounded-full bg-slate-600"></span>
+            <span class="text-slate-500">Connecting…</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Chat panel -->
+      <div class="col-span-9 flex flex-col glass rounded-2xl min-h-0">
+        <div id="chatHeader" class="px-6 py-4 border-b border-white/[0.06] font-medium flex justify-between items-center flex-shrink-0">
+          <div class="flex items-center gap-3">
+            <div class="w-2 h-2 rounded-full status-online"></div>
+            <span class="font-semibold">Demo Chat</span>
+          </div>
+          <button onclick="switchTab(5)" class="text-teal-400 text-xs badge-teal px-3 py-1 rounded-full hover:bg-teal-400/20 transition-colors">History →</button>
+        </div>
+        <div id="chatArea" class="flex-1 p-5 chat-scroll space-y-4 overflow-y-auto">
+          <div class="flex justify-start">
+            <div class="max-w-[75%] msg-bot px-5 py-3 text-sm leading-relaxed">
+              Welcome to <strong class="text-teal-400">AI Multimedia Platform</strong> 👋<br>
+              Upload audio/video for diarization & transcription, or PDF for AI summaries.
+            </div>
+          </div>
+        </div>
+        <div class="p-4 border-t border-white/[0.06] flex-shrink-0">
+          <div class="flex gap-3">
+            <input id="chatInput" type="text" placeholder="Ask about your uploaded files…"
+              class="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-teal-400/60 transition-colors placeholder:text-slate-600">
+            <button onclick="sendMessage()" class="btn-primary px-6 rounded-xl text-sm font-semibold">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ PROCESSING TAB ════════════════ -->
+  <div id="content-1" class="hidden flex-1 p-5 overflow-auto">
+    <h2 class="text-xl font-semibold mb-5 flex items-center gap-2">
+      <i class="fa-solid fa-microchip text-teal-400"></i> Processing Pipeline
+    </h2>
+    <div class="grid grid-cols-12 gap-5">
+      <!-- Queue -->
+      <div class="col-span-5 glass rounded-2xl p-5">
+        <div class="flex justify-between items-center mb-5">
+          <h3 class="font-semibold flex items-center gap-2"><i class="fa-solid fa-list-check text-teal-400 text-sm"></i> Queue</h3>
+          <button onclick="clearCompleted()" class="text-xs text-slate-500 hover:text-red-400 border border-white/10 hover:border-red-400/40 px-3 py-1 rounded-full transition-all">Clear done</button>
+        </div>
+        <div id="processingList" class="space-y-3 text-sm">
+          <div class="text-center py-10 text-slate-600">
+            <i class="fa-solid fa-hourglass text-2xl mb-2 block opacity-40"></i>
+            No active processes
+          </div>
+        </div>
+      </div>
+      <!-- Steps -->
+      <div class="col-span-7 glass rounded-2xl p-5">
+        <h3 class="font-semibold mb-5 flex items-center gap-2"><i class="fa-solid fa-diagram-next text-indigo-400 text-sm"></i> Pipeline Steps</h3>
+        <div class="space-y-3">
+          <div class="flex items-center justify-between glass rounded-xl px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-7 h-7 rounded-lg bg-teal-400/10 flex items-center justify-center text-teal-400 text-xs font-bold">1</div>
+              <span id="step1label" class="text-sm font-medium">Upload</span>
+            </div>
+            <span id="step1" class="step-pending text-xs font-semibold">Pending</span>
+          </div>
+          <div class="flex items-center justify-between glass rounded-xl px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-7 h-7 rounded-lg bg-indigo-400/10 flex items-center justify-center text-indigo-400 text-xs font-bold">2</div>
+              <span id="step2label" class="text-sm font-medium">Diarization</span>
+            </div>
+            <span id="step2" class="step-pending text-xs font-semibold">Pending</span>
+          </div>
+          <div class="flex items-center justify-between glass rounded-xl px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-7 h-7 rounded-lg bg-purple-400/10 flex items-center justify-center text-purple-400 text-xs font-bold">3</div>
+              <span id="step3label" class="text-sm font-medium">Transcription</span>
+            </div>
+            <span id="step3" class="step-pending text-xs font-semibold">Pending</span>
+          </div>
+          <div class="flex items-center justify-between glass rounded-xl px-4 py-3">
+            <div class="flex items-center gap-3">
+              <div class="w-7 h-7 rounded-lg bg-emerald-400/10 flex items-center justify-center text-emerald-400 text-xs font-bold">4</div>
+              <span id="step4label" class="text-sm font-medium">Complete</span>
+            </div>
+            <span id="step4" class="step-pending text-xs font-semibold">Pending</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ ANALYTICS TAB ════════════════ -->
+  <div id="content-2" class="hidden flex-1 p-5 overflow-auto">
+    <h2 class="text-xl font-semibold mb-5 flex items-center gap-2">
+      <i class="fa-solid fa-chart-mixed text-teal-400"></i> Analytics
+    </h2>
+    <div class="grid grid-cols-4 gap-4 mb-6">
+      <div class="stat-card glass rounded-2xl p-5 text-center">
+        <div class="text-3xl font-bold grad-text mb-1" id="werValue">--</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest">WER Score</div>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 text-center">
+        <div class="text-3xl font-bold grad-text mb-1" id="durValue">--</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest">Duration</div>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 text-center">
+        <div class="text-3xl font-bold grad-text mb-1" id="spkValue">--</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest">Speakers</div>
+      </div>
+      <div class="stat-card glass rounded-2xl p-5 text-center">
+        <div class="text-3xl font-bold grad-text mb-1" id="wrdValue">--</div>
+        <div class="text-xs text-slate-500 uppercase tracking-widest">Words</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ TRANSCRIPT TAB ════════════════ -->
+  <div id="content-3" class="hidden flex-1 p-5 flex gap-5 min-h-0 overflow-hidden">
+
+    <!-- Sidebar -->
+    <div class="w-64 glass rounded-2xl p-4 flex flex-col min-h-0 flex-shrink-0">
+      <h2 class="font-semibold mb-4 flex-shrink-0 text-sm flex items-center gap-2">
+        <i class="fa-solid fa-headphones text-teal-400"></i> Audio Files
+      </h2>
+      <div id="audioList" class="flex-1 chat-scroll space-y-1.5 overflow-y-auto"></div>
+    </div>
+
+    <!-- Main area -->
+    <div class="flex-1 flex flex-col min-h-0 gap-4 overflow-hidden">
+
+      <!-- Title bar -->
+      <div class="glass rounded-2xl px-5 py-3 flex items-center justify-between flex-shrink-0">
+        <h2 id="selectedAudioTitle" class="font-semibold text-sm text-slate-400">Select an audio file</h2>
+        <div class="flex items-center gap-2">
+          <span class="badge-teal text-[10px] px-2 py-0.5 rounded-full font-semibold"><i class="fa-solid fa-waveform-lines mr-1"></i>Live Transcript</span>
+        </div>
+      </div>
+
+      <!-- Transcript + Analysis row -->
+      <div class="flex-1 flex gap-4 min-h-0 overflow-hidden">
+
+        <!-- Conversation panel -->
+        <div class="flex-1 glass rounded-2xl flex flex-col min-h-0">
+          <div class="px-4 py-3 border-b border-white/[0.06] flex-shrink-0 flex items-center gap-2">
+            <i class="fa-solid fa-comments text-teal-400 text-xs"></i>
+            <span class="text-xs font-semibold text-slate-400 uppercase tracking-wider">Conversation</span>
+          </div>
+          <div id="transcriptPreview" class="flex-1 p-4 chat-scroll overflow-y-auto space-y-3">
+            <div class="flex flex-col items-center justify-center h-full gap-3 text-center">
+              <div class="w-14 h-14 rounded-2xl bg-white/[0.03] flex items-center justify-center">
+                <i class="fa-solid fa-file-waveform text-2xl text-slate-600"></i>
+              </div>
+              <p class="text-slate-600 text-sm">Select an audio file to view the transcript</p>
+            </div>
+          </div>
+        </div>
+
+        <!-- Analysis sidebar -->
+        <div class="w-64 flex flex-col gap-3 flex-shrink-0 overflow-y-auto">
+
+          <!-- Speakers -->
+          <div class="glass rounded-2xl p-4 flex-shrink-0">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <i class="fa-solid fa-users text-teal-400"></i> Speakers
+            </h3>
+            <div id="speakerSegments" class="flex flex-wrap gap-1.5">
+              <span class="text-slate-600 text-xs">No speakers detected</span>
+            </div>
+          </div>
+
+          <!-- Sentiment -->
+          <div class="glass rounded-2xl p-4 flex-shrink-0">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <i class="fa-solid fa-face-smile text-indigo-400"></i> Sentiment
+            </h3>
+            <div id="sentimentDisplay" class="text-center py-2">
+              <div class="text-xl font-bold text-slate-500">--</div>
+              <div class="text-[10px] text-slate-600 mt-0.5">not available</div>
+            </div>
+          </div>
+
+          <!-- Primary Emotion -->
+          <div class="glass rounded-2xl p-4 flex-shrink-0">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <i class="fa-solid fa-heart text-pink-400"></i> Primary Emotion
+            </h3>
+            <div id="primaryEmotionDisplay" class="text-center py-2">
+              <div class="text-xl font-bold text-slate-500">--</div>
+              <div class="text-[10px] text-slate-600 mt-0.5">not available</div>
+            </div>
+          </div>
+
+          <!-- Top Emotions -->
+          <div class="glass rounded-2xl p-4 flex-shrink-0">
+            <h3 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-3 flex items-center gap-1.5">
+              <i class="fa-solid fa-chart-bar text-orange-400"></i> Emotion Breakdown
+            </h3>
+            <div id="topEmotionsList" class="space-y-2.5">
+              <span class="text-slate-600 text-xs">No data</span>
+            </div>
+            <div class="mt-3 pt-3 border-t border-white/[0.05]">
+              <div class="flex justify-between items-center mb-1.5">
+                <span class="text-[10px] text-slate-600">Confidence</span>
+                <span id="confidenceScore" class="text-[10px] font-mono text-teal-400">0%</span>
+              </div>
+              <div class="h-1.5 progress-track">
+                <div id="confidenceBar" class="h-full progress-fill" style="width:0%"></div>
+              </div>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ SUMMARIES TAB ════════════════ -->
+  <div id="content-4" class="hidden flex-1 p-5 flex gap-5 min-h-0 overflow-hidden">
+    <div class="w-64 glass rounded-2xl p-4 flex flex-col min-h-0 flex-shrink-0">
+      <h2 class="font-semibold mb-4 flex-shrink-0 text-sm flex items-center gap-2">
+        <i class="fa-solid fa-file-pdf text-indigo-400"></i> Documents
+      </h2>
+      <div id="documentList" class="flex-1 chat-scroll space-y-1.5 overflow-y-auto"></div>
+    </div>
+    <div class="flex-1 glass rounded-2xl p-5 flex flex-col min-h-0">
+      <h2 id="selectedDocumentTitle" class="font-semibold mb-5 flex-shrink-0 text-slate-400 text-sm">Select a document</h2>
+      <div class="flex-1 chat-scroll space-y-4 overflow-y-auto">
+        <div class="glass rounded-2xl p-5 accent-indigo">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 rounded-xl badge-indigo flex items-center justify-center"><i class="fa-solid fa-bolt text-sm"></i></div>
+            <h3 class="text-sm font-semibold text-indigo-300">Groq (Llama 3.3 70B)</h3>
+            <span class="badge-indigo text-[10px] px-2 py-0.5 rounded-full ml-auto">Primary</span>
+          </div>
+          <div id="summaryGroq" class="text-sm leading-relaxed text-slate-400">Select a document</div>
+        </div>
+        <div class="glass rounded-2xl p-5 accent-teal">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 rounded-xl badge-teal flex items-center justify-center"><i class="fa-solid fa-layer-group text-sm"></i></div>
+            <h3 class="text-sm font-semibold text-teal-300">Template Summary</h3>
+          </div>
+          <div id="summaryTemplate" class="text-sm leading-relaxed text-slate-400">Select a document</div>
+        </div>
+        <div class="glass rounded-2xl p-5 accent-slate opacity-60">
+          <div class="flex items-center gap-3 mb-3">
+            <div class="w-8 h-8 rounded-xl bg-white/[0.04] flex items-center justify-center"><i class="fa-solid fa-robot text-slate-400 text-sm"></i></div>
+            <h3 class="text-sm font-medium text-slate-400">T5 Summary</h3>
+            <span class="text-[10px] text-slate-600 ml-auto">Legacy</span>
+          </div>
+          <div id="summaryT5" class="text-sm leading-relaxed text-slate-500">Select a document</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ════════════════ HISTORY TAB ════════════════ -->
+  <div id="content-5" class="hidden flex h-full min-h-0 overflow-hidden">
+    <div class="w-80 border-r border-white/[0.06] p-5 flex flex-col">
+      <div class="flex justify-between mb-5 flex-shrink-0 items-center">
+        <h2 class="font-semibold flex items-center gap-2"><i class="fa-solid fa-clock-rotate-left text-teal-400 text-sm"></i> History</h2>
+        <button onclick="createNewChat()" class="btn-primary px-4 py-2 rounded-xl text-xs font-semibold flex items-center gap-1.5">
+          <i class="fa-solid fa-plus"></i> New
+        </button>
+      </div>
+      <div id="historyList" class="flex-1 chat-scroll space-y-2 overflow-y-auto"></div>
+    </div>
+    <div class="flex-1 flex flex-col p-5 min-h-0">
+      <div id="previewHeader" class="flex justify-between items-center mb-4 flex-shrink-0"></div>
+      <div id="previewArea" class="flex-1 glass rounded-2xl p-5 chat-scroll space-y-4 overflow-y-auto"></div>
+      <div class="mt-4 flex gap-3 flex-shrink-0">
+        <button onclick="loadSelectedChatIntoDashboard()" class="flex-1 btn-primary py-3 rounded-xl font-semibold text-sm">Load in Dashboard</button>
+        <button onclick="switchTab(0)" class="flex-1 btn-secondary py-3 rounded-xl font-semibold text-sm text-slate-300">Cancel</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ════ RENAME MODAL ════ -->
+<div id="renameModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[100]">
+  <div class="modal-box glass rounded-2xl p-7 w-96 border border-white/[0.1]">
+    <h3 class="font-semibold text-lg mb-1">Rename Chat</h3>
+    <p class="text-slate-500 text-sm mb-5">Enter a new name for this conversation</p>
+    <input id="renameInput" type="text" class="w-full bg-white/[0.05] border border-white/[0.1] rounded-xl px-4 py-3 focus:outline-none focus:border-teal-400/60 transition-colors text-sm">
+    <div class="flex justify-end gap-3 mt-5">
+      <button onclick="closeRenameModal()" class="px-5 py-2.5 text-slate-400 hover:text-white text-sm transition-colors">Cancel</button>
+      <button onclick="confirmRename()" class="btn-primary px-6 py-2.5 rounded-xl text-sm">Rename</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ DELETE MODAL ════ -->
+<div id="deleteModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[100]">
+  <div class="modal-box glass rounded-2xl p-7 w-96 text-center border border-white/[0.1]">
+    <div class="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4">
+      <i class="fa-solid fa-trash text-red-400 text-lg"></i>
+    </div>
+    <h3 class="font-semibold text-lg mb-1">Delete Chat?</h3>
+    <p id="deleteChatName" class="text-slate-400 text-sm mb-6"></p>
+    <div class="flex justify-center gap-3">
+      <button onclick="closeDeleteModal()" class="px-6 py-2.5 btn-secondary rounded-xl text-sm text-slate-300">Cancel</button>
+      <button onclick="confirmDelete()" class="px-6 py-2.5 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-semibold transition-colors">Delete</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const API_BASE = (() => {
+  // If running on localhost, use port 5000
+  if (window.location.hostname === 'localhost' || window.location.hostname === '127.0.0.1') {
+    return 'http://localhost:5000/api';
+  }
+  // Otherwise use the same origin
+  return window.location.origin + '/api';
+})();
+let chats = [], activeChatId = null, selectedPreviewId = null, chatToRename = null, chatToDelete = null;
+let processingQueue = [], isProcessing = false, currentProcessingItem = null;
+
+document.addEventListener('DOMContentLoaded', async () => { if (await checkBackendHealth()) loadChats(); });
+document.getElementById('audioFileInput').addEventListener('change', handleAudioUpload);
+document.getElementById('pdfFileInput').addEventListener('change', handlePdfUpload);
+document.getElementById('chatInput').addEventListener('keydown', function(e) {
+  if (e.key === 'Enter') { e.preventDefault(); sendMessage(); }
+});
+
+async function checkBackendHealth() {
+  const s = document.getElementById('backendStatus');
+  try {
+    await fetch(`${API_BASE}/health`, { signal: AbortSignal.timeout(5000) });
+    s.innerHTML = `<span class="w-2 h-2 rounded-full status-online"></span><span class="text-green-400">Connected</span>`;
+    return true;
+  } catch (e) {
+    s.innerHTML = `<span class="w-2 h-2 rounded-full status-offline"></span><span class="text-red-400">Offline</span>`;
+    return false;
+  }
+}
+
+function addActivity(msg, type = 'info') {
+  const f = document.getElementById('activityFeed'); if (!f) return;
+  const placeholder = f.querySelector('.text-slate-600');
+  if (placeholder) placeholder.closest('div') ? placeholder.closest('div').remove() : placeholder.remove();
+  const icons = { info: 'fa-circle-info text-slate-500', success: 'fa-circle-check text-teal-400', error: 'fa-circle-xmark text-red-400', processing: 'fa-circle-notch fa-spin text-blue-400' };
+  const textColors = { info: 'text-slate-400', success: 'text-teal-300', error: 'text-red-300', processing: 'text-blue-300' };
+  const d = document.createElement('div');
+  d.className = `flex items-start gap-2 ${textColors[type]||'text-slate-400'}`;
+  d.innerHTML = `<i class="fa-solid ${icons[type]||icons.info} mt-0.5 flex-shrink-0 text-xs"></i><span class="break-all text-xs leading-relaxed">${msg}</span>`;
+  f.appendChild(d); f.scrollTop = f.scrollHeight;
+}
+
+async function apiCall(endpoint, method='GET', body=null, isFormData=false, timeoutMs=8000) {
+  const headers = {}; if (!isFormData) headers['Content-Type'] = 'application/json';
+  const options = { method, headers }; if (body) options.body = isFormData ? body : JSON.stringify(body);
+  const controller = new AbortController(); const timer = setTimeout(() => controller.abort(), timeoutMs);
+  options.signal = controller.signal;
+  try {
+    const r = await fetch(`${API_BASE}${endpoint}`, options); clearTimeout(timer);
+    if (!r.ok) { const e = await r.json().catch(()=>({})); throw new Error(e.error||`HTTP ${r.status}`); }
+    return r.json();
+  } catch (err) { clearTimeout(timer); if (err.name==='AbortError') throw new Error('Request timed out'); throw err; }
+}
+
+// ── Processing ──
+function updateQueueDisplay() {
+  const c = document.getElementById('processingList'); if (!c) return;
+  if (!processingQueue.length) {
+    c.innerHTML = '<div class="text-center py-10 text-slate-600"><i class="fa-solid fa-hourglass text-2xl mb-2 block opacity-40"></i>No active processes</div>';
+    return;
+  }
+  c.innerHTML = processingQueue.map((item, i) => {
+    const colors = { queued:'text-slate-400', processing:'text-amber-400', completed:'text-teal-400', failed:'text-red-400' };
+    const icons = { queued:'fa-clock', processing:'fa-circle-notch fa-spin', completed:'fa-circle-check', failed:'fa-circle-xmark' };
+    return `<div class="glass rounded-xl p-4">
+      <div class="flex justify-between items-center mb-2">
+        <span class="truncate text-sm font-medium mr-2">${item.fileName}</span>
+        <span class="${colors[item.status]||'text-slate-400'} text-xs flex items-center gap-1.5 flex-shrink-0">
+          <i class="fa-solid ${icons[item.status]||'fa-clock'}"></i>${item.status}
+        </span>
+      </div>
+      ${item.status==='processing'?`<div class="h-1.5 progress-track"><div class="progress-fill h-full" style="width:${item.progress}%"></div></div>`:''}
+    </div>`;
+  }).join('');
+}
+
+function resetPipelineSteps(type) {
+  ['step1','step2','step3','step4'].forEach(id => {
+    const el = document.getElementById(id); if (el) { el.className='step-pending text-xs font-semibold'; el.textContent='Pending'; }
+  });
+  const labels = type==='pdf' ? ['Upload','Text Extraction','Gemma Summarization','Complete'] : ['Upload','Diarization','Transcription','Complete'];
+  ['step1label','step2label','step3label','step4label'].forEach((id, i) => {
+    const el = document.getElementById(id); if (el) el.textContent = labels[i];
+  });
+}
+
+function clearCompleted() {
+  processingQueue = processingQueue.filter(i => i.status !== 'completed' && i.status !== 'failed');
+  updateQueueDisplay();
+}
+
+async function processSingleFile(fileId, fileName, chatId, type) {
+  const item = { fileId, fileName, chatId, type, status:'processing', progress:10 };
+  processingQueue.push(item); currentProcessingItem = item;
+  updateQueueDisplay(); resetPipelineSteps(type);
+  const s1 = document.getElementById('step1');
+  s1.className='step-done text-xs font-semibold'; s1.textContent='Uploaded ✓';
+  const s2 = document.getElementById('step2');
+  s2.className='step-running text-xs font-semibold'; s2.textContent='Running…';
+  addActivity(`Processing: ${fileName}`, 'processing');
+
+  const iv = setInterval(() => {
+    if (item.status === 'processing') { item.progress = Math.min(item.progress+5, 90); updateQueueDisplay(); }
+  }, 3000);
+
+  try {
+    if (type === 'pdf') { await apiCall(`/summarize/${fileId}`, 'POST', null, false, 120000); }
+    else { await apiCall(`/process/${fileId}`, 'POST', null, false, 660000); }
+    clearInterval(iv);
+    item.status = 'completed'; item.progress = 100; updateQueueDisplay();
+    ['step2','step3','step4'].forEach(id => {
+      const el = document.getElementById(id); if (el) { el.className='step-done text-xs font-semibold'; el.textContent='Done ✓'; }
+    });
+    addActivity(`Completed: ${fileName}`, 'success');
+    try {
+      const chat = chats.find(c=>c.id===chatId);
+      if (type === 'pdf') {
+        const summary = await apiCall(`/summary/${fileId}`);
+        if (chat) { chat.summarizedFiles=chat.summarizedFiles||{}; chat.summarizedFiles[fileId]={fileName,summary}; await updateChat(chat); }
+      } else {
+        const transcript = await apiCall(`/transcript/${fileId}`);
+        updateAnalytics(transcript);
+        if (chat) { chat.processedFiles=chat.processedFiles||{}; chat.processedFiles[fileId]={fileName,transcript}; await updateChat(chat); }
+      }
+    } catch(e) { console.warn('Result fetch failed:', e); }
+  } catch(error) {
+    clearInterval(iv);
+    item.status = 'failed'; item.error = error.message; updateQueueDisplay();
+    const s2f = document.getElementById('step2'); if(s2f){s2f.className='step-fail text-xs font-semibold';s2f.textContent='Failed';}
+    addActivity(`Failed: ${fileName} — ${error.message}`, 'error');
+    try {
+      const chat = chats.find(c=>c.id===chatId);
+      if (chat) { chat.failedFiles=chat.failedFiles||{}; chat.failedFiles[fileId]={fileName,failedAt:new Date().toISOString(),error:error.message}; await updateChat(chat); }
+    } catch(e){}
+  }
+  currentProcessingItem = null; updateProcessBtn();
+}
+
+async function handleAudioUpload(e) {
+  const files = Array.from(e.target.files); if (!files.length) return; e.target.value = '';
+  for (const file of files) {
+    const ext = file.name.split('.').pop().toLowerCase();
+    const isVideo = file.type.startsWith('video/') || ['mp4','mov','avi','mkv','webm','m4v'].includes(ext);
+    const sizeMB = (file.size / 1024 / 1024).toFixed(1);
+    if (file.size > 500 * 1024 * 1024) { addActivity(`Too large: ${file.name} (${sizeMB}MB)`, 'error'); continue; }
+    addActivity(`Uploading ${isVideo?'video':'audio'}: ${file.name} (${sizeMB}MB)`, 'processing');
+    const fd = new FormData(); fd.append('audio', file, file.name);
+    try {
+      const data = await apiCall('/upload/audio', 'POST', fd, true, 120000);
+      const chat = chats.find(c=>c.id===activeChatId);
+      if (chat) { chat.attached=chat.attached||[]; chat.attached.push({type:'audio',name:file.name,fileId:data.file_id}); await updateChat(chat); }
+      addActivity(`Uploaded: ${file.name}`, 'success');
+    } catch(err) { addActivity(`Upload failed: ${file.name} — ${err.message}`, 'error'); }
+  }
+  updateProcessBtn();
+}
+
+async function handlePdfUpload(e) {
+  const files = Array.from(e.target.files); if (!files.length) return; e.target.value = '';
+  for (const file of files) {
+    addActivity(`Uploading PDF: ${file.name}`, 'processing');
+    const fd = new FormData(); fd.append('pdf', file);
+    try {
+      const data = await apiCall('/upload/pdf', 'POST', fd, true);
+      const chat = chats.find(c=>c.id===activeChatId);
+      if (chat) { chat.attached=chat.attached||[]; chat.attached.push({type:'pdf',name:file.name,fileId:data.file_id}); await updateChat(chat); }
+      addActivity(`Uploaded: ${file.name}`, 'success');
+    } catch(err) { addActivity(`Upload failed: ${file.name} — ${err.message}`, 'error'); }
+  }
+  updateProcessBtn();
+}
+
+async function processContent() {
+  if (isProcessing) { alert('Already processing a file, please wait.'); return; }
+  const chat = chats.find(c=>c.id===activeChatId);
+  const files = chat?.attached || [];
+  if (!files.length) { alert('No files uploaded yet.'); return; }
+  const unprocessed = files.filter(f => !(chat.processedFiles?.[f.fileId]) && !(chat.summarizedFiles?.[f.fileId]));
+  if (!unprocessed.length) { alert('All files already processed.'); return; }
+  isProcessing = true; updateProcessBtn();
+  for (const f of unprocessed) { await processSingleFile(f.fileId, f.name, activeChatId, f.type||'audio'); }
+  isProcessing = false; updateProcessBtn();
+}
+
+function updateProcessBtn() {
+  const btn = document.getElementById('processBtn'); if (!btn) return;
+  const chat = chats.find(c=>c.id===activeChatId);
+  const files = chat?.attached || [];
+  const hasUnprocessed = files.some(f => !chat?.processedFiles?.[f.fileId] && !chat?.summarizedFiles?.[f.fileId]);
+  if (hasUnprocessed && !isProcessing) {
+    btn.removeAttribute('disabled');
+    btn.className = 'w-full rounded-xl py-2.5 text-sm btn-primary transition-all';
+    btn.innerHTML = '<i class="fa-solid fa-bolt mr-1.5"></i> Process Content';
+  } else {
+    btn.setAttribute('disabled','true');
+    btn.className = 'w-full rounded-xl py-2.5 text-sm cursor-not-allowed opacity-40 bg-white/5 border border-white/10 text-slate-400 transition-all';
+    btn.innerHTML = isProcessing ? '<i class="fa-solid fa-circle-notch fa-spin mr-1.5"></i> Processing…' : '<i class="fa-solid fa-bolt mr-1.5"></i> Process Content';
+  }
+}
+
+function updateAnalytics(transcript) {
+  const text = transcript.full_text||'';
+  const words = text.split(/\s+/).filter(w=>w.length>0).length;
+  const speakers = transcript.speaker_count||(transcript.segments?new Set(transcript.segments.map(s=>s.speaker)).size:0);
+  let duration = 0;
+  if (transcript.segments?.length>0) duration = Math.max(...transcript.segments.map(s=>s.end));
+  document.getElementById('werValue').textContent = '--';
+  const dv = document.getElementById('durValue'); if(dv) dv.textContent = duration>0?Math.round(duration)+'s':'--';
+  const sv = document.getElementById('spkValue'); if(sv) sv.textContent = speakers||'--';
+  const wv = document.getElementById('wrdValue'); if(wv) wv.textContent = words||'--';
+}
+
+async function loadChats() {
+  try { chats = await apiCall('/chats'); if (!chats.length) await createNewChat(); else { activeChatId=chats[0].id; loadActiveChat(); } renderHistoryList(); }
+  catch(e) { chats=[{id:'demo1',title:'Demo Chat',messages:[],attached:[],pinned:false}]; activeChatId='demo1'; loadActiveChat(); }
+}
+
+async function createNewChat() {
+  const nc = await apiCall('/chats','POST',{title:'Chat '+new Date().toLocaleTimeString()});
+  chats.unshift(nc); activeChatId=nc.id; loadActiveChat(); renderHistoryList(); switchTab(0);
+}
+
+async function updateChat(chat) { try { await apiCall(`/chats/${chat.id}`,'PUT',chat); } catch(e){} }
+
+function loadActiveChat() {
+  const chat = chats.find(c=>c.id===activeChatId); if (!chat) return;
+  document.getElementById('chatHeader').innerHTML = `
+    <div class="flex items-center gap-3">
+      <div class="w-2 h-2 rounded-full status-online"></div>
+      <span class="font-semibold text-sm">${chat.title}</span>
+    </div>
+    <button onclick="switchTab(5)" class="text-teal-400 text-xs badge-teal px-3 py-1 rounded-full hover:bg-teal-400/20 transition-colors">History →</button>`;
+  const area = document.getElementById('chatArea'); area.innerHTML = '';
+  if (!chat.messages?.length) {
+    area.innerHTML = `<div class="flex justify-start"><div class="max-w-[80%] msg-bot px-5 py-3 text-sm leading-relaxed">Welcome! Upload audio or PDF files to begin.<br><br>📝 <strong class="text-teal-400">New!</strong> PDFs are summarized using <strong>Gemma 4 E4B</strong></div></div>`;
+  } else {
+    chat.messages.forEach(msg => {
+      const div = document.createElement('div');
+      div.className = msg.role==='user' ? 'flex justify-end' : 'flex justify-start';
+      if (msg.role==='user') {
+        div.innerHTML = `<div class="max-w-[80%] msg-user px-5 py-3 text-sm">${escapeHtml(msg.content)}</div>`;
+      } else {
+        if (msg.content && (msg.content.includes('<div')||msg.content.includes('<ul')||msg.content.includes('<p'))) {
+          div.innerHTML = `<div class="max-w-[85%] msg-bot px-5 py-3 text-sm">${msg.content}</div>`;
+        } else {
+          div.innerHTML = `<div class="max-w-[85%] msg-bot px-5 py-3 text-sm">${escapeHtml(msg.content).replace(/\n/g,'<br>')}</div>`;
+        }
+      }
+      area.appendChild(div);
+    });
+  }
+  area.scrollTop = area.scrollHeight; updateProcessBtn();
+}
+
+async function sendMessage() {
+  const input = document.getElementById('chatInput'); const text = input.value.trim(); if (!text) return;
+  const chat = chats.find(c=>c.id===activeChatId); if (!chat) return;
+  chat.messages = chat.messages||[]; chat.messages.push({role:'user',content:text}); loadActiveChat(); input.value='';
+  const area = document.getElementById('chatArea');
+  const typingDiv = document.createElement('div');
+  typingDiv.className = 'flex justify-start'; typingDiv.id = 'typingIndicator';
+  typingDiv.innerHTML = '<div class="msg-bot px-5 py-3 text-sm"><div class="flex gap-1.5 items-center"><span class="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" style="animation-delay:0ms"></span><span class="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" style="animation-delay:150ms"></span><span class="w-1.5 h-1.5 bg-teal-400 rounded-full animate-bounce" style="animation-delay:300ms"></span></div></div>';
+  area.appendChild(typingDiv); area.scrollTop = area.scrollHeight;
+  let answer;
+  try {
+    const r = await apiCall('/rag/ask','POST',{query:text,chat_id:activeChatId},false,120000);
+    if (r?.answer) answer = r.answer;
+  } catch(e) {}
+  const ti = document.getElementById('typingIndicator'); if (ti) ti.remove();
+  if (!answer) {
+    const p = Object.keys(chat.processedFiles||{}).length; const s = Object.keys(chat.summarizedFiles||{}).length;
+    if (p||s) answer = `I have ${p} transcript(s) and ${s} summary(ies) available. Ask me a specific question!`;
+    else answer = "Upload and process files to enable RAG Q&A.";
+  }
+  chat.messages.push({role:'assistant',content:formatRagAnswer(answer)}); loadActiveChat(); updateChat(chat);
+}
+
+function formatRagAnswer(answer) {
+  if (!answer) return answer;
+  if (answer.match(/\d+\.\s+[A-Z]/)) {
+    let f = answer.replace(/\*\*([^*]+)\*\*/g,'<strong class="text-teal-400">$1</strong>');
+    f = f.replace(/\d+\.\s+/g,''); f = f.replace(/\n\n/g,'</p><p class="mt-2">');
+    return `<div>${f}</div>`;
+  }
+  if (answer.includes('**')||answer.includes('- ')||answer.includes('•')) {
+    let lines = answer.split('\n'); let html = '<div class="space-y-2">'; let inList = false;
+    for (let line of lines) {
+      line = line.trim(); if (!line) continue;
+      if (line.startsWith('- ')||line.startsWith('• ')||line.startsWith('* ')) {
+        if (!inList) { html += '<ul class="list-disc list-inside space-y-1 ml-2">'; inList = true; }
+        let content = line.substring(2).replace(/\*\*([^*]+)\*\*/g,'<strong class="text-teal-400">$1</strong>');
+        html += `<li class="text-slate-300 text-sm">${content}</li>`;
+      } else {
+        if (inList) { html += '</ul>'; inList = false; }
+        line = line.replace(/\*\*([^*]+)\*\*/g,'<strong class="text-teal-400">$1</strong>');
+        html += `<p class="text-slate-300 text-sm">${line}</p>`;
+      }
+    }
+    if (inList) html += '</ul>'; html += '</div>'; return html;
+  }
+  let f = answer.replace(/\*\*([^*]+)\*\*/g,'<strong class="text-teal-400">$1</strong>').replace(/\n/g,'<br>');
+  return `<div class="text-slate-300 text-sm leading-relaxed">${f}</div>`;
+}
+
+// ── Transcript Tab ──
+async function loadTranscriptTab() {
+  const chat = chats.find(c=>c.id===activeChatId); if (!chat) return;
+  const audioFiles = chat.attached?.filter(f=>f.type==='audio')||[];
+  const container = document.getElementById('audioList');
+  if (!audioFiles.length) { container.innerHTML='<div class="text-slate-600 text-xs text-center py-6"><i class="fa-solid fa-music text-2xl block mb-2 opacity-30"></i>No audio uploaded</div>'; return; }
+  container.innerHTML = audioFiles.map(f => {
+    const isProcessed = chat.processedFiles?.[f.fileId];
+    const isQueued = processingQueue.some(q=>q.fileId===f.fileId);
+    return `<div class="file-item glass-hover rounded-xl p-2.5 flex items-center justify-between cursor-pointer transition-all group" onclick="selectAudio('${f.fileId}','${escapeAttr(f.name)}')">
+      <div class="flex items-center gap-2 min-w-0 flex-1">
+        <i class="fa-solid fa-music text-teal-400 text-xs flex-shrink-0"></i>
+        <span class="truncate text-xs font-medium">${f.name}</span>
+        ${isProcessed?'<i class="fa-solid fa-circle-check text-teal-400 text-[10px] flex-shrink-0"></i>':isQueued?'<i class="fa-solid fa-clock text-amber-400 text-[10px] flex-shrink-0"></i>':''}
+      </div>
+      <i class="file-delete fa-solid fa-trash text-[10px] text-slate-600 hover:text-red-400 opacity-0 cursor-pointer flex-shrink-0 ml-1 transition-all" onclick="deleteFile('${f.fileId}');event.stopPropagation();"></i>
+    </div>`;
+  }).join('');
+}
+
+function escapeAttr(s) { return (s||'').replace(/'/g,"\\'"); }
+
+// Speaker color palette
+const SPK_PALETTE = [
+  { dot:'bg-teal-400',   text:'text-teal-300',   bubble:'bubble-left',  avatar:'bg-teal-400/20 text-teal-300' },
+  { dot:'bg-indigo-400', text:'text-indigo-300',  bubble:'bubble-right', avatar:'bg-indigo-400/20 text-indigo-300' },
+  { dot:'bg-orange-400', text:'text-orange-300',  bubble:'bubble-other', avatar:'bg-orange-400/20 text-orange-300' },
+  { dot:'bg-pink-400',   text:'text-pink-300',    bubble:'bubble-left',  avatar:'bg-pink-400/20 text-pink-300' },
+  { dot:'bg-purple-400', text:'text-purple-300',  bubble:'bubble-other', avatar:'bg-purple-400/20 text-purple-300' },
+  { dot:'bg-emerald-400',text:'text-emerald-300', bubble:'bubble-left',  avatar:'bg-emerald-400/20 text-emerald-300' },
+];
+
+async function selectAudio(fileId, fileName) {
+  document.getElementById('selectedAudioTitle').innerHTML = `<span class="text-slate-500 font-normal">Transcript:</span> <span class="grad-text">${fileName}</span>`;
+  // Highlight selected
+  document.querySelectorAll('#audioList .file-item').forEach(el => el.classList.remove('glass-active'));
+  event?.currentTarget?.classList?.add('glass-active');
+
+  document.getElementById('transcriptPreview').innerHTML = `
+    <div class="flex flex-col items-center justify-center h-full gap-3">
+      <i class="fa-solid fa-circle-notch fa-spin text-teal-400 text-2xl"></i>
+      <p class="text-slate-500 text-sm">Loading transcript…</p>
+    </div>`;
+  document.getElementById('sentimentDisplay').innerHTML = '<div class="text-xl font-bold text-slate-500">--</div><div class="text-[10px] text-slate-600 mt-0.5">loading</div>';
+  document.getElementById('primaryEmotionDisplay').innerHTML = '<div class="text-xl font-bold text-slate-500">--</div><div class="text-[10px] text-slate-600 mt-0.5">loading</div>';
+  document.getElementById('topEmotionsList').innerHTML = '<div class="flex items-center gap-2 text-slate-600 text-xs"><i class="fa-solid fa-circle-notch fa-spin text-xs"></i> Loading…</div>';
+
+  const chat = chats.find(c=>c.id===activeChatId);
+  const processed = chat?.processedFiles?.[fileId];
+  if (processed?.transcript) {
+    displayTranscript(processed.transcript);
+  } else {
+    try {
+      const data = await apiCall(`/transcript/${fileId}`);
+      displayTranscript(data);
+      if (chat) { chat.processedFiles=chat.processedFiles||{}; chat.processedFiles[fileId]={fileName,transcript:data}; await updateChat(chat); }
+    } catch(e) {
+      document.getElementById('transcriptPreview').innerHTML = '<div class="flex flex-col items-center justify-center h-full gap-2 text-red-400"><i class="fa-solid fa-circle-exclamation text-2xl"></i><p class="text-sm">Transcript not available</p></div>';
+    }
+  }
+  try {
+    const emotionData = await apiCall(`/emotion/${fileId}?_=${Date.now()}`);
+    if (emotionData && (emotionData.emotion||emotionData.sentiment)) displayEmotion(emotionData);
+    else {
+      document.getElementById('sentimentDisplay').innerHTML = '<div class="text-xl font-bold text-slate-500">N/A</div><div class="text-[10px] text-slate-600 mt-0.5">not available</div>';
+      document.getElementById('primaryEmotionDisplay').innerHTML = '<div class="text-xl font-bold text-slate-500">N/A</div><div class="text-[10px] text-slate-600 mt-0.5">not available</div>';
+      document.getElementById('topEmotionsList').innerHTML = '<span class="text-slate-600 text-xs">No emotion data</span>';
+    }
+  } catch(e) {
+    document.getElementById('sentimentDisplay').innerHTML = '<div class="text-xl font-bold text-slate-500">N/A</div><div class="text-[10px] text-slate-600 mt-0.5">not available</div>';
+    document.getElementById('primaryEmotionDisplay').innerHTML = '<div class="text-xl font-bold text-slate-500">N/A</div><div class="text-[10px] text-slate-600 mt-0.5">not available</div>';
+    document.getElementById('topEmotionsList').innerHTML = '<span class="text-slate-600 text-xs">Not available</span>';
+  }
+}
+
+function displayTranscript(data) {
+  const previewDiv = document.getElementById('transcriptPreview');
+  const segDiv = document.getElementById('speakerSegments');
+  const speakers = []; const speakerIdx = {};
+
+  function getColor(spk) {
+    if (!(spk in speakerIdx)) { speakerIdx[spk] = Object.keys(speakerIdx).length % SPK_PALETTE.length; speakers.push(spk); }
+    return SPK_PALETTE[speakerIdx[spk]];
+  }
+
+  function formatTime(s) {
+    const m = Math.floor(s/60); const sec = Math.floor(s%60);
+    return m>0 ? `${m}m ${sec}s` : `${sec}s`;
+  }
+
+  if (data.conversation && data.conversation.length > 0) {
+    let html = '<div class="space-y-3 pb-2">';
+    data.conversation.forEach((turn, idx) => {
+      const spk = turn.speaker||'SPEAKER_00'; const c = getColor(spk);
+      const initials = spk.replace('SPEAKER_','S').slice(-2);
+      const isRight = speakerIdx[spk] % 2 === 1;
+      html += `
+        <div class="flex items-start gap-2.5 ${isRight?'flex-row-reverse':''}">
+          <div class="spk-avatar ${c.avatar}" title="${spk}">${initials}</div>
+          <div class="flex-1 max-w-[85%]">
+            <div class="${c.bubble} rounded-2xl px-4 py-3">
+              <div class="flex items-center gap-2 mb-1.5 ${isRight?'flex-row-reverse':''}">
+                <span class="text-[10px] font-bold ${c.text} uppercase tracking-wider">${spk}</span>
+                <span class="text-[10px] text-slate-600">${formatTime(turn.start)} – ${formatTime(turn.end)}</span>
+              </div>
+              <p class="text-sm leading-relaxed text-slate-200">${escapeHtml(turn.text)}</p>
+            </div>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    previewDiv.innerHTML = html;
+
+  } else if (data.per_speaker && Object.keys(data.per_speaker).length > 0) {
+    let html = '<div class="space-y-3 pb-2">';
+    Object.entries(data.per_speaker).forEach(([spk, content]) => {
+      if (!content?.trim()) return;
+      const c = getColor(spk); const initials = spk.replace('SPEAKER_','S').slice(-2);
+      const isRight = speakerIdx[spk] % 2 === 1;
+      html += `
+        <div class="flex items-start gap-2.5 ${isRight?'flex-row-reverse':''}">
+          <div class="spk-avatar ${c.avatar}">${initials}</div>
+          <div class="${c.bubble} rounded-2xl px-4 py-3 flex-1 max-w-[85%]">
+            <div class="text-[10px] font-bold ${c.text} uppercase tracking-wider mb-1.5">${spk}</div>
+            <p class="text-sm leading-relaxed text-slate-200">${escapeHtml(content)}</p>
+          </div>
+        </div>`;
+    });
+    html += '</div>';
+    previewDiv.innerHTML = html;
+
+  } else if (data.full_text) {
+    getColor('SPEAKER_00');
+    previewDiv.innerHTML = `<div class="bubble-left rounded-2xl px-4 py-3"><p class="text-sm leading-relaxed text-slate-200">${escapeHtml(data.full_text)}</p></div>`;
+  } else {
+    previewDiv.innerHTML = `
+      <div class="flex flex-col items-center justify-center h-full gap-3 text-center">
+        <i class="fa-solid fa-file-slash text-2xl text-slate-600"></i>
+        <p class="text-slate-600 text-sm italic">No transcript available</p>
+      </div>`;
+  }
+
+  if (speakers.length > 0) {
+    segDiv.innerHTML = speakers.map(s => {
+      const c = getColor(s);
+      return `<div class="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/[0.07]">
+        <span class="w-1.5 h-1.5 rounded-full ${c.dot}"></span>
+        <span class="text-[11px] font-semibold ${c.text}">${s}</span>
+      </div>`;
+    }).join('');
+  } else {
+    segDiv.innerHTML = '<span class="text-slate-600 text-xs">No speakers detected</span>';
+  }
+  updateAnalytics(data);
+}
+
+function getEmotionColor(emotion) {
+  const m = {'joy':'text-yellow-400','admiration':'text-purple-400','amusement':'text-yellow-400','anger':'text-red-500','sadness':'text-blue-400','fear':'text-purple-500','love':'text-pink-400','gratitude':'text-emerald-400','surprise':'text-orange-400','neutral':'text-slate-400','confusion':'text-amber-400','positive':'text-teal-400','negative':'text-red-400','curiosity':'text-sky-400','optimism':'text-teal-400','caring':'text-pink-400'};
+  return m[emotion]||'text-slate-300';
+}
+function getEmotionBg(emotion) { return getEmotionColor(emotion).replace('text-','bg-'); }
+
+function displayEmotion(data) {
+  if (!data) { return; }
+  let sentimentLabel = data.sentiment?.label||'neutral';
+  let sentimentScore = data.sentiment?.score||0.5;
+  let emotionLabel = data.emotion?.label||'neutral';
+  let emotionScore = data.emotion?.score||0.5;
+  let topEmotions = data.top_3_emotions||[];
+  if (topEmotions.length===0 && emotionLabel) topEmotions = [{label:emotionLabel,score:emotionScore}];
+
+  const sc = getEmotionColor(sentimentLabel);
+  document.getElementById('sentimentDisplay').innerHTML = `
+    <div class="text-xl font-bold ${sc} capitalize">${sentimentLabel}</div>
+    <div class="text-[10px] text-slate-600 mt-0.5">${Math.round(sentimentScore*100)}% confidence</div>`;
+
+  const ec = getEmotionColor(emotionLabel);
+  document.getElementById('primaryEmotionDisplay').innerHTML = `
+    <div class="text-xl font-bold ${ec} capitalize">${emotionLabel}</div>
+    <div class="text-[10px] text-slate-600 mt-0.5">${Math.round(emotionScore*100)}% confidence</div>`;
+
+  let topHtml = '';
+  for (let i = 0; i < Math.min(topEmotions.length,4); i++) {
+    const e = topEmotions[i]; const label = e.label||e; const score = e.score||0.5;
+    const c = getEmotionColor(label); const bg = getEmotionBg(label);
+    topHtml += `<div>
+      <div class="flex justify-between text-[11px] mb-1">
+        <span class="${c} capitalize font-medium">${label}</span>
+        <span class="text-slate-600">${Math.round(score*100)}%</span>
+      </div>
+      <div class="h-1.5 emo-bar"><div class="emo-fill ${bg}" style="width:${score*100}%"></div></div>
+    </div>`;
+  }
+  document.getElementById('topEmotionsList').innerHTML = topHtml||'<span class="text-slate-600 text-xs">No data</span>';
+
+  const topConf = topEmotions.length>0?topEmotions[0].score:emotionScore;
+  document.getElementById('confidenceScore').textContent = `${Math.round(topConf*100)}%`;
+  document.getElementById('confidenceBar').style.width = `${topConf*100}%`;
+}
+
+// ── Summaries Tab ──
+async function loadSummariesTab() {
+  const chat = chats.find(c=>c.id===activeChatId); if (!chat) return;
+  const pdfFiles = chat.attached?.filter(f=>f.type==='pdf')||[];
+  const container = document.getElementById('documentList');
+  if (!pdfFiles.length) { container.innerHTML='<div class="text-slate-600 text-xs text-center py-6"><i class="fa-solid fa-file-pdf text-2xl block mb-2 opacity-30"></i>No PDFs uploaded</div>'; return; }
+  container.innerHTML = pdfFiles.map(f => {
+    const isSummarized = chat.summarizedFiles?.[f.fileId];
+    const isQueued = processingQueue.some(q=>q.fileId===f.fileId);
+    return `<div class="file-item glass-hover rounded-xl p-2.5 flex items-center justify-between cursor-pointer group transition-all" onclick="selectDocument('${f.fileId}','${escapeAttr(f.name)}')">
+      <div class="flex items-center gap-2 flex-1 min-w-0">
+        <i class="fa-solid fa-file-pdf text-indigo-400 text-xs flex-shrink-0"></i>
+        <span class="truncate text-xs font-medium">${f.name}</span>
+        ${isSummarized?'<i class="fa-solid fa-circle-check text-teal-400 text-[10px] flex-shrink-0"></i>':isQueued?'<i class="fa-solid fa-clock text-amber-400 text-[10px] flex-shrink-0"></i>':''}
+      </div>
+      <i class="file-delete fa-solid fa-trash text-[10px] text-slate-600 hover:text-red-400 opacity-0 cursor-pointer flex-shrink-0 ml-1 transition-all" onclick="deleteFile('${f.fileId}');event.stopPropagation();"></i>
+    </div>`;
+  }).join('');
+}
+
+async function selectDocument(fileId, fileName) {
+  document.getElementById('selectedDocumentTitle').innerHTML = `<span class="text-slate-500 font-normal">Summary:</span> <span class="text-indigo-300">${fileName}</span>`;
+  ['summaryGroq', 'summaryTemplate', 'summaryT5'].forEach(id => {
+    const el = document.getElementById(id); if(el) el.innerHTML='<span class="text-slate-600 text-sm italic">Loading…</span>';
+  });
+  const chat = chats.find(c=>c.id===activeChatId);
+  const cached = chat?.summarizedFiles?.[fileId];
+  if (cached?.summary) { displaySummary(cached.summary); return; }
+  try {
+    const data = await apiCall(`/summary/${fileId}`);
+    displaySummary(data);
+    if (chat) { chat.summarizedFiles=chat.summarizedFiles||{}; chat.summarizedFiles[fileId]={fileName,summary:data}; await updateChat(chat); }
+  } catch(e) {
+    document.getElementById('summaryGroq').innerHTML = '<span class="text-red-400 text-sm">Failed to load</span>';
+    document.getElementById('summaryTemplate').innerHTML = '<span class="text-slate-600 text-sm">N/A</span>';
+    document.getElementById('summaryT5').innerHTML = '<span class="text-slate-600 text-sm">N/A</span>';
+  }
+}
+
+function displaySummary(data) {
+  const g = data.groq || data.gemma || data.template || 'No Groq summary available';
+  const groqEl = document.getElementById('summaryGroq');
+  if (groqEl) {
+    groqEl.innerHTML = `<div class="whitespace-pre-wrap leading-relaxed text-slate-300 text-sm">${escapeHtml(g)}</div>`;
+  }
+  const t = data.template || 'N/A';
+  const templateEl = document.getElementById('summaryTemplate');
+  if (templateEl) {
+    templateEl.innerHTML = `<div class="whitespace-pre-wrap leading-relaxed text-slate-400 text-sm">${escapeHtml(t)}</div>`;
+  }
+  const t5 = data.t5 || 'N/A';
+  const t5El = document.getElementById('summaryT5');
+  if (t5El) {
+    t5El.innerHTML = `<div class="whitespace-pre-wrap leading-relaxed text-slate-500 text-sm">${escapeHtml(t5)}</div>`;
+  }
+}
+
+function escapeHtml(text) {
+  if (!text) return '';
+  return text.replace(/[&<>]/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[m]||m)).replace(/\n/g,'<br>');
+}
+
+async function deleteFile(fileId) {
+  const chat = chats.find(c=>c.id===activeChatId); if (!chat) return;
+  chat.attached=(chat.attached||[]).filter(f=>f.fileId!==fileId);
+  if (chat.processedFiles) delete chat.processedFiles[fileId];
+  if (chat.summarizedFiles) delete chat.summarizedFiles[fileId];
+  processingQueue=processingQueue.filter(q=>q.fileId!==fileId);
+  await updateChat(chat); loadTranscriptTab(); loadSummariesTab(); addActivity('File removed','info');
+}
+
+// ── History Tab ──
+function renderHistoryList() {
+  const container = document.getElementById('historyList'); container.innerHTML='';
+  [...chats].sort((a,b)=>(b.pinned?1:0)-(a.pinned?1:0)||new Date(b.createdAt)-new Date(a.createdAt)).forEach(chat=>{
+    const div = document.createElement('div');
+    div.className = `glass rounded-xl p-3.5 cursor-pointer flex justify-between items-center group transition-all glass-hover ${chat.id===activeChatId?'glass-active':''}`;
+    div.innerHTML = `
+      <div class="flex-1 min-w-0" onclick="selectPreviewChat('${chat.id}')">
+        <div class="font-medium text-sm truncate">${chat.title}</div>
+        <div class="text-[11px] text-slate-500 mt-0.5">${chat.messages?.length||0} messages</div>
+      </div>
+      <div class="flex items-center gap-2 text-slate-600 ml-3 flex-shrink-0">
+        <i onclick="togglePin('${chat.id}');event.stopPropagation();" class="fa-solid fa-thumbtack cursor-pointer hover:text-teal-400 transition-colors ${chat.pinned?'text-teal-400':''} text-sm"></i>
+        <i onclick="showRenameModal('${chat.id}');event.stopPropagation();" class="fa-solid fa-pencil cursor-pointer hover:text-teal-400 transition-colors text-sm"></i>
+        <i onclick="showDeleteModal('${chat.id}');event.stopPropagation();" class="fa-solid fa-trash cursor-pointer hover:text-red-400 transition-colors text-sm"></i>
+      </div>`;
+    container.appendChild(div);
+  });
+}
+
+function selectPreviewChat(id) {
+  selectedPreviewId=id; const chat=chats.find(c=>c.id===id); if(!chat)return;
+  document.getElementById('previewHeader').innerHTML=`
+    <div class="font-semibold text-sm">${chat.title}</div>
+    <div class="flex gap-3 text-slate-500">
+      <i onclick="showRenameModal('${id}')" class="fa-solid fa-pencil cursor-pointer hover:text-teal-400 transition-colors"></i>
+      <i onclick="showDeleteModal('${id}')" class="fa-solid fa-trash cursor-pointer hover:text-red-400 transition-colors"></i>
+    </div>`;
+  const area=document.getElementById('previewArea'); area.innerHTML='';
+  if(!chat.messages?.length){area.innerHTML='<div class="text-slate-600 text-center mt-12 text-sm">No messages</div>';}
+  else{chat.messages.forEach(msg=>area.innerHTML+=msg.role==='user'?`<div class="flex justify-end"><div class="max-w-[70%] msg-user px-4 py-2.5 text-sm">${msg.content}</div></div>`:`<div class="flex justify-start"><div class="max-w-[70%] msg-bot px-4 py-2.5 text-sm">${msg.content}</div></div>`);}
+}
+
+function loadSelectedChatIntoDashboard() { if(selectedPreviewId){activeChatId=selectedPreviewId;loadActiveChat();switchTab(0);} }
+async function togglePin(id) { const c=chats.find(c=>c.id===id); if(c){c.pinned=!c.pinned;await updateChat(c);renderHistoryList();} }
+
+function showRenameModal(id) { chatToRename=chats.find(c=>c.id===id); if(chatToRename){document.getElementById('renameInput').value=chatToRename.title;document.getElementById('renameModal').classList.remove('hidden');} }
+async function confirmRename() { if(chatToRename){const t=document.getElementById('renameInput').value.trim();if(t){chatToRename.title=t;await updateChat(chatToRename);}} closeRenameModal();renderHistoryList();if(activeChatId===chatToRename?.id)loadActiveChat(); }
+function closeRenameModal() { document.getElementById('renameModal').classList.add('hidden');chatToRename=null; }
+function showDeleteModal(id) { chatToDelete=id;const c=chats.find(c=>c.id===id);document.getElementById('deleteChatName').textContent=c?.title||'';document.getElementById('deleteModal').classList.remove('hidden'); }
+async function confirmDelete() { if(chatToDelete){await apiCall(`/chats/${chatToDelete}`,'DELETE');chats=chats.filter(c=>c.id!==chatToDelete);if(activeChatId===chatToDelete)activeChatId=chats.length?chats[0].id:null;}closeDeleteModal();renderHistoryList();if(activeChatId)loadActiveChat();else createNewChat(); }
+function closeDeleteModal() { document.getElementById('deleteModal').classList.add('hidden');chatToDelete=null; }
+function resetDemo() { if(confirm('Reset all demo data?'))location.reload(); }
+
+function switchTab(n) {
+  document.querySelectorAll('[id^="content-"]').forEach(el=>el.classList.add('hidden'));
+  document.getElementById('content-'+n).classList.remove('hidden');
+  document.querySelectorAll('a[id^="tab-"]').forEach(el=>el.classList.remove('tab-active'));
+  document.getElementById('tab-'+n).classList.add('tab-active');
+  if(n===1)updateQueueDisplay();
+  if(n===3)loadTranscriptTab();
+  if(n===4)loadSummariesTab();
+  if(n===5){renderHistoryList();selectedPreviewId=null;document.getElementById('previewArea').innerHTML='<div class="text-slate-600 text-center mt-12 text-sm">Select a chat on the left</div>';document.getElementById('previewHeader').innerHTML='';}
+}
+
+function toggleDropdown(id) {
+  const dd=document.getElementById(id); dd.classList.toggle('hidden');
+  if(id==='fileDropdown')renderCurrentChatFiles();
+  if(id==='bellDropdown')renderNotifications();
+}
+
+function renderCurrentChatFiles() {
+  const chat=chats.find(c=>c.id===activeChatId);const c=document.getElementById('currentChatFiles');
+  if(!chat?.attached?.length){c.innerHTML='<div class="text-slate-600 text-xs p-2">No files attached</div>';return;}
+  c.innerHTML=chat.attached.map(f=>`<div class="flex items-center gap-2.5 p-2.5 hover:bg-white/[0.04] rounded-xl transition-colors">
+    <i class="fa-solid ${f.type==='pdf'?'fa-file-pdf text-indigo-400':'fa-music text-teal-400'} text-sm"></i>
+    <span class="truncate text-xs">${f.name}</span>
+  </div>`).join('');
+}
+
+function renderNotifications() {
+  const q=processingQueue.filter(i=>i.status==='queued').length;
+  const p=processingQueue.filter(i=>i.status==='processing').length;
+  let h='';
+  if(p>0)h+=`<div class="flex gap-2.5 items-center text-amber-400 text-xs"><i class="fa-solid fa-circle-notch fa-spin"></i>${p} processing</div>`;
+  if(q>0)h+=`<div class="flex gap-2.5 items-center text-teal-400 text-xs"><i class="fa-solid fa-clock"></i>${q} queued</div>`;
+  if(!h)h='<div class="flex gap-2.5 items-center text-teal-400 text-xs"><i class="fa-solid fa-check"></i>All clear</div>';
+  document.getElementById('bellContent').innerHTML=h;
+}
+
+document.addEventListener('click',(e)=>{if(!e.target.closest('.relative'))document.querySelectorAll('[id$="Dropdown"]').forEach(d=>d.classList.add('hidden'));});
+</script>
+
+<!-- ════ DELETE FILE MODAL ════ -->
+<div id="deleteFileModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[200]">
+  <div class="modal-box glass rounded-2xl p-7 w-[420px] max-w-[95vw] border border-white/[0.1] max-h-[90vh] flex flex-col">
+    <div class="w-12 h-12 rounded-2xl bg-red-500/10 flex items-center justify-center mx-auto mb-4 flex-shrink-0">
+      <i class="fa-solid fa-trash text-red-400 text-lg"></i>
+    </div>
+    <h3 class="font-semibold text-lg mb-1 text-center text-white flex-shrink-0">Delete Files</h3>
+    <p class="text-slate-400 text-sm text-center mb-4 flex-shrink-0">Select files to permanently delete</p>
+    
+    <!-- Select All / Deselect All -->
+    <div class="flex items-center justify-between mb-3 flex-shrink-0">
+      <label class="flex items-center gap-2 cursor-pointer text-sm text-slate-300 hover:text-white transition-colors">
+        <input type="checkbox" id="selectAllFiles" class="w-4 h-4 accent-red-500 rounded border-white/20 bg-slate-700">
+        <span>Select All</span>
+      </label>
+      <span id="selectedCount" class="text-xs text-slate-500">0 selected</span>
+    </div>
+    
+    <!-- File List with Checkboxes -->
+    <div id="fileListContainer" class="flex-1 overflow-y-auto max-h-64 space-y-1.5 pr-1 mb-4">
+      <div class="text-slate-500 text-sm text-center py-4">Loading files...</div>
+    </div>
+    
+    <div class="flex justify-center gap-3 mt-2 flex-shrink-0">
+      <button onclick="closeDeleteFileModal()" class="px-6 py-2.5 btn-secondary rounded-xl text-sm text-slate-300">Cancel</button>
+      <button onclick="confirmDeleteFiles()" id="confirmDeleteFilesBtn" class="px-6 py-2.5 bg-red-500 hover:bg-red-600 rounded-xl text-sm font-semibold transition-colors disabled:opacity-40 disabled:cursor-not-allowed text-white" disabled>Delete Selected</button>
+    </div>
+  </div>
+</div>
+
+<!-- ════ STORAGE STATS MODAL ════ -->
+<div id="storageStatsModal" class="hidden fixed inset-0 modal-bg flex items-center justify-center z-[100]">
+  <div class="modal-box glass rounded-2xl p-7 w-96 border border-white/[0.1]">
+    <div class="flex items-center gap-3 mb-4">
+      <div class="w-10 h-10 rounded-xl bg-teal-400/10 flex items-center justify-center"><i class="fa-solid fa-hdd text-teal-400"></i></div>
+      <h3 class="font-semibold text-lg">Storage Usage</h3>
+    </div>
+    <div id="storageStatsContent" class="space-y-3 text-sm">
+      <p class="text-slate-500">Loading...</p>
+    </div>
+    <div class="flex justify-end mt-5">
+      <button onclick="closeStorageStats()" class="btn-secondary px-6 py-2.5 rounded-xl text-sm">Close</button>
+    </div>
+  </div>
+</div>
+</body>
+</html>

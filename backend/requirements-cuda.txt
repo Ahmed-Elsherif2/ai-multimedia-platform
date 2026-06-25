@@ -1,0 +1,20 @@
+# ============================================================
+# CUDA (GPU) build of PyTorch for AI Multimedia Platform
+# ============================================================
+# Run this AFTER requirements.txt to upgrade torch to the GPU build:
+#
+#   pip install -r backend/requirements.txt
+#   pip install -r backend/requirements-cuda.txt
+#
+# Supports CUDA 11.8 (works on CUDA 12.x cards too via compatibility mode).
+# For CUDA 12.1 native: replace cu118 with cu121 in all lines below.
+#
+# Check your CUDA version: nvidia-smi
+# ============================================================
+
+--index-url https://download.pytorch.org/whl/cu118
+--extra-index-url https://pypi.org/simple
+
+# Replaces the CPU torch==2.3.1 installed by requirements.txt
+torch==2.3.1+cu118
+torchaudio==2.3.1+cu118
