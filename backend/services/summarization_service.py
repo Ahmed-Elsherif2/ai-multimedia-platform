@@ -197,7 +197,7 @@ class SummarizationService:
 
     def __init__(self):
         self._groq = _GroqSummarizer()
-        self._t5 = _T5Summarizer()
+        # self._t5 = _T5Summarizer()
         self._template = _TemplateSummarizer(num_sentences=5)
 
     def summarize_pdf(self, pdf_path: Path) -> dict:
@@ -218,12 +218,16 @@ class SummarizationService:
         # 2. Template (Always available)
         template_summary = self._template.summarize(full_text)
 
-        # 3. T5 (Fallback)
+        # 3. T5 (Fallback) - Skip on Railway
         t5_summary = ""
-        try:
-            t5_summary = self._t5.summarize(full_text[:4000])
-        except Exception as exc:
-            print(f"[SummarizationService] T5 skipped: {exc}")
+        if os.getenv("DISABLE_T5") != "true":
+            try:
+                t5_summary = self._t5.summarize(full_text[:4000])
+                print(f"[SummarizationService] T5: {len(t5_summary)} chars")
+            except Exception as exc:
+                print(f"[SummarizationService] T5 skipped: {exc}")
+        else:
+            print("[SummarizationService] T5 disabled (DISABLE_T5=true)")
 
         if groq_summary:
             model_used = "groq-llama-3.3-70b"
