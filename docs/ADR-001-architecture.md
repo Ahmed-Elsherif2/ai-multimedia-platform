@@ -2,8 +2,7 @@
 
 | Field       | Value                            |
 |-------------|----------------------------------|
-| Status      | Accepted                         |
-| Date        | 2026-06-21                       |
+| Date        | 2026-06-20                       |
 | Authors     | AI Multimedia Platform Team      |
 | Supersedes  | —                                |
 
@@ -33,7 +32,7 @@ directly and, in some cases, reimplementing it inline.
 |---|---------|--------|
 | 1 | `torch==2.8.0` (research) vs `torch==2.3.0` (production) | Shared venv breaks on `pip install` |
 | 2 | `pyannote.audio==3.4.0` vs `3.1.1` | Silent diarization output format drift |
-| 3 | Gemma model path hardcoded to `C:/Users/ahmed/models/...` | Fails on every machine except the original developer's |
+| 3 | Gemma model path hardcoded to `C:/Users/{user}/models/...` | Fails on every machine except the original developer's |
 | 4 | Emotion logic implemented twice (class in `emotion_analysis/` + inline in `pipeline.py`) | Bug fixes applied to one copy don't reach the other |
 | 5 | Week 5 RAG module disconnected from production backend | Research findings wasted; backend reimplements from scratch |
 
