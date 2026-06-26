@@ -24,7 +24,7 @@ from routes import (
     rag_bp, chat_bp,
     audio_bp, pdf_bp,   # backward compat
 )
-from routes.auth_routes import auth_bp  # 🆕 Import auth blueprint
+from routes.auth_routes import auth_bp
 
 # Frontend directory
 FRONTEND_DIR = settings.BASE_DIR.parent / "frontend"
@@ -34,22 +34,17 @@ app.config["SECRET_KEY"] = settings.SECRET_KEY
 app.config["MAX_CONTENT_LENGTH"] = settings.max_content_length
 
 # Enable CORS for all routes
-CORS(app, supports_credentials=True)  # 🆕 Allow cookies for sessions
+CORS(app, supports_credentials=True)
 
 # ── Register Blueprints ──────────────────────────────────────────────────────
 
-# Authentication (must be registered first)
-app.register_blueprint(auth_bp)  # 🆕
-
-# New blueprints (preferred)
+app.register_blueprint(auth_bp)
 app.register_blueprint(upload_bp)
 app.register_blueprint(transcript_bp)
 app.register_blueprint(summary_bp)
 app.register_blueprint(emotion_bp)
 app.register_blueprint(rag_bp)
 app.register_blueprint(chat_bp)
-
-# Backward-compat blueprints (keep existing frontend working)
 app.register_blueprint(audio_bp)
 app.register_blueprint(pdf_bp)
 
@@ -58,7 +53,6 @@ app.register_blueprint(pdf_bp)
 
 @app.route("/api/health")
 def health():
-    """Health check endpoint for Railway/Hosting."""
     return jsonify({
         "status": "ok",
         "version": "2.0",
@@ -72,7 +66,6 @@ def health():
 
 @app.route("/api/files")
 def list_files():
-    """Return all files for the current user."""
     from database import queries
     from flask import session
     user_id = session.get("user_id")
@@ -84,7 +77,6 @@ def list_files():
 
 @app.route("/api/debug/emotion/<file_id>")
 def debug_emotion(file_id):
-    """Development helper — raw emotion data for a processed file."""
     import json
     from flask import session
     user_id = session.get("user_id")
@@ -106,26 +98,22 @@ def debug_emotion(file_id):
 
 @app.route("/")
 def serve_index():
-    """Serve the main frontend application."""
     return send_from_directory(str(FRONTEND_DIR), "index.html")
 
 
 @app.route("/test.html")
 def serve_test():
-    """Serve the test page (if exists)."""
     return send_from_directory(str(FRONTEND_DIR), "test.html")
 
 
 @app.route("/js/<path:filename>")
 def serve_js(filename):
-    """Serve JavaScript files."""
     js_dir = FRONTEND_DIR / "js"
     return send_from_directory(str(js_dir), filename)
 
 
 @app.route("/css/<path:filename>")
 def serve_css(filename):
-    """Serve CSS files (if exists)."""
     css_dir = FRONTEND_DIR / "css"
     if css_dir.exists():
         return send_from_directory(str(css_dir), filename)
@@ -136,7 +124,6 @@ def serve_css(filename):
 
 @app.errorhandler(404)
 def not_found(e):
-    """Handle 404 errors gracefully."""
     if request.path.startswith("/api/"):
         return jsonify({"error": "API endpoint not found"}), 404
     return send_from_directory(str(FRONTEND_DIR), "index.html")
@@ -144,7 +131,6 @@ def not_found(e):
 
 @app.errorhandler(500)
 def server_error(e):
-    """Handle 500 errors gracefully."""
     return jsonify({
         "error": "Internal server error",
         "message": str(e) if settings.DEBUG else "Please try again later"
@@ -153,14 +139,18 @@ def server_error(e):
 
 @app.errorhandler(413)
 def too_large(e):
-    """Handle file too large errors."""
     return jsonify({
         "error": "File too large",
         "max_size_mb": settings.MAX_CONTENT_MB
     }), 413
 
 
-# ── Startup ──────────────────────────────────────────────────────────────────
+# ─── Initialize database on startup ──────────────────────────────────────────
+init_db()
+print("[startup] ✅ Database initialized")
+
+
+# ─── Startup Preload ──────────────────────────────────────────────────────────
 
 def _preload():
     """Warm up heavy models at startup so the first request doesn't stall."""
@@ -176,13 +166,7 @@ def _preload():
 
     # 2. Check Groq configuration (your primary LLM)
     if settings.GROQ_API_KEY:
-        try:
-            from groq import Groq
-            client = Groq(api_key=settings.GROQ_API_KEY)
-            # Quick test - list models (lightweight)
-            print("[startup] ✅ Groq API configured")
-        except Exception as exc:
-            print(f"[startup] ⚠️ Groq API check failed: {exc}")
+        print("[startup] ✅ Groq API configured")
     else:
         print("[startup] ⚠️ GROQ_API_KEY not set - Groq summarization disabled")
 
@@ -206,13 +190,8 @@ if __name__ == "__main__":
     print(f"  🔧 Environment: {settings.ENVIRONMENT}")
     print("=" * 60)
     
-    # Initialize database
-    init_db()
-    
-    # Preload services
     _preload()
     
-    # Run app
     app.run(
         debug=settings.DEBUG,
         port=settings.PORT,
