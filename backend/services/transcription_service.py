@@ -36,14 +36,17 @@ class TranscriptionService:
         from utils.gpu_utils import get_device
         self._device = get_device(settings.TORCH_DEVICE)
         
-        # Use float16 on CUDA, int8 on CPU
-        if self._device == "cuda":
+        # ⚠️ Force CPU on Windows to avoid OpenMP issues
+        import platform
+        if platform.system() == "Windows":
+            self._device = "cpu"
+            self._compute_type = "int8"
+        elif self._device == "cuda":
             self._compute_type = "float16"
         else:
             self._compute_type = "int8"
         
         try:
-            # Try faster-whisper first (preferred)
             from faster_whisper import WhisperModel
             log.info(f"loading faster-whisper {settings.WHISPER_MODEL} on {self._device} (compute={self._compute_type})…")
             self._model = WhisperModel(
@@ -54,10 +57,9 @@ class TranscriptionService:
                 num_workers=2
             )
             log.info(f"faster-whisper ready (device={self._device})")
-            
+            self._use_faster_whisper = True
         except ImportError:
             # Fallback to OpenAI Whisper
-            log.info(f"faster-whisper not available, falling back to OpenAI Whisper {settings.WHISPER_MODEL}…")
             import whisper
             self._model = whisper.load_model(settings.WHISPER_MODEL, device=self._device)
             self._use_faster_whisper = False

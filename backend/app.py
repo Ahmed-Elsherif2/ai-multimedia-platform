@@ -13,6 +13,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 os.environ.setdefault("HF_HUB_DISABLE_SYMLINKS_WARNING", "1")
+os.environ["KMP_DUPLICATE_LIB_OK"] = "TRUE"
 
 from flask import Flask, jsonify, send_from_directory, request
 from flask_cors import CORS

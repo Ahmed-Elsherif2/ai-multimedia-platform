@@ -491,112 +491,31 @@ async function handleAudioUpload(e) {
   setUploadBtnState('uploadAudioBtn', true, 'Uploading…');
   for (const file of files) {
     const ext = file.name.split('.').pop().toLowerCase();
-    const isVideo = file.type.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v'].includes(ext);
+    const isVideo = file.type.startsWith('video/') || ['mp4', 'mov', 'avi', 'mkv', 'webm', 'm4v', 'mpg', 'mpeg'].includes(ext);
     const sizeMB = (file.size / 1024 / 1024).toFixed(1);
     if (file.size > 500 * 1024 * 1024) {
       addActivity(`Too large: ${file.name} (${sizeMB}MB)`, 'error');
       continue;
     }
 
-    if (isVideo) {
-      addActivity(`Uploading & processing video: ${file.name} — this may take a few minutes…`, 'processing');
-      resetPipelineSteps('audio');
-      const qItem = { fileId: null, fileName: file.name, chatId: activeChatId, type: 'video', status: 'processing', progress: 5 };
-      processingQueue.push(qItem);
-      updateQueueDisplay();
-      setUploadBtnState('uploadAudioBtn', true, 'Processing…');
-      const s1 = $('step1');
-      if (s1) { s1.className = 'step-running text-xs font-semibold'; s1.textContent = 'Uploading…'; }
-
-      const uploadDoneTimer = setTimeout(() => {
-        const s1el = $('step1');
-        if (s1el) { s1el.className = 'step-done text-xs font-semibold'; s1el.textContent = 'Uploaded ✓'; }
-        const s2el = $('step2');
-        if (s2el) { s2el.className = 'step-running text-xs font-semibold'; s2el.textContent = 'Running…'; }
-      }, 3000);
-
-      const iv = setInterval(() => {
-        if (qItem.status === 'processing') {
-          qItem.progress = Math.min((qItem.progress || 5) + 3, 90);
-          updateQueueDisplay();
-        }
-      }, 4000);
-
-      const fd = new FormData();
-      fd.append('video', file, file.name);
-      try {
-        const data = await apiCall('/upload/video', 'POST', fd, true, 660000);
-        clearTimeout(uploadDoneTimer);
-        clearInterval(iv);
-
-        if (data.status === 'failed') {
-          qItem.status = 'failed';
-          updateQueueDisplay();
-          const s2f = $('step2');
-          if (s2f) { s2f.className = 'step-fail text-xs font-semibold'; s2f.textContent = 'Failed'; }
-          addActivity(`Processing failed: ${file.name} — ${data.error || 'unknown error'}`, 'error');
-          continue;
-        }
-
-        ['step1', 'step2', 'step3', 'step4'].forEach((id) => {
-          const el = $(id);
-          if (el) { el.className = 'step-done text-xs font-semibold'; el.textContent = 'Done ✓'; }
-        });
-
-        qItem.fileId = data.file_id;
-        qItem.status = 'completed';
-        qItem.progress = 100;
-        updateQueueDisplay();
-
-        const transcript = {
-          file_id:       data.file_id,
-          full_text:     data.full_text,
-          segments:      data.transcript,
-          conversation:  data.conversation,
-          per_speaker:   data.per_speaker,
-          speaker_count: data.speaker_count,
-          duration:      data.duration,
-        };
-        const chat = getActiveChat();
-        if (chat) {
-          const prev = (chat.attached || []).find((f) => f.name === file.name);
-          if (prev?.fileId && chat.processedFiles) delete chat.processedFiles[prev.fileId];
-          chat.attached = (chat.attached || []).filter((f) => f.name !== file.name);
-          chat.attached.push({ type: 'audio', name: file.name, fileId: data.file_id });
-          chat.processedFiles = chat.processedFiles || {};
-          chat.processedFiles[data.file_id] = { fileName: file.name, transcript };
-          await updateChat(chat);
-          updateAnalytics(transcript);
-        }
-        const spkLabel = data.speaker_count > 1 ? `${data.speaker_count} speakers` : '1 speaker';
-        addActivity(`Processed: ${file.name} (${spkLabel})`, 'success');
-      } catch (err) {
-        clearTimeout(uploadDoneTimer);
-        clearInterval(iv);
-        qItem.status = 'failed';
-        updateQueueDisplay();
-        const s2f = $('step2');
-        if (s2f) { s2f.className = 'step-fail text-xs font-semibold'; s2f.textContent = 'Failed'; }
-        addActivity(`Failed: ${file.name} — ${err.message}`, 'error');
+    // ✅ Videos are uploaded as audio (no auto-processing)
+    // They will be processed when user clicks "Process Content"
+    addActivity(`Uploading ${isVideo ? 'video' : 'audio'}: ${file.name}${isVideo ? ' (will process later)' : ''}`, 'processing');
+    const fd = new FormData();
+    fd.append('audio', file, file.name);
+    try {
+      const data = await apiCall('/upload/audio', 'POST', fd, true, 120000);
+      const chat = getActiveChat();
+      if (chat) {
+        const prev = (chat.attached || []).find((f) => f.name === file.name);
+        if (prev?.fileId && chat.processedFiles) delete chat.processedFiles[prev.fileId];
+        chat.attached = (chat.attached || []).filter((f) => f.name !== file.name);
+        chat.attached.push({ type: 'audio', name: file.name, fileId: data.file_id });
+        await updateChat(chat);
       }
-    } else {
-      addActivity(`Uploading audio: ${file.name}`, 'processing');
-      const fd = new FormData();
-      fd.append('audio', file, file.name);
-      try {
-        const data = await apiCall('/upload/audio', 'POST', fd, true, 120000);
-        const chat = getActiveChat();
-        if (chat) {
-          const prev = (chat.attached || []).find((f) => f.name === file.name);
-          if (prev?.fileId && chat.processedFiles) delete chat.processedFiles[prev.fileId];
-          chat.attached = (chat.attached || []).filter((f) => f.name !== file.name);
-          chat.attached.push({ type: 'audio', name: file.name, fileId: data.file_id });
-          await updateChat(chat);
-        }
-        addActivity(`Uploaded: ${file.name}`, 'success');
-      } catch (err) {
-        addActivity(`Upload failed: ${file.name} — ${err.message}`, 'error');
-      }
+      addActivity(`Uploaded: ${file.name}`, 'success');
+    } catch (err) {
+      addActivity(`Upload failed: ${file.name} — ${err.message}`, 'error');
     }
   }
   setUploadBtnState('uploadAudioBtn', false);

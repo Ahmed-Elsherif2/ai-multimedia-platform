@@ -68,6 +68,7 @@ class _GroqSummarizer(_BaseSummarizer):
             print("[SummarizationService] GROQ_API_KEY not set.")
             return
         
+        # ✅ CORRECT: Just pass api_key
         self._client = Groq(api_key=api_key)
         print("[SummarizationService] Groq client ready.")
 
