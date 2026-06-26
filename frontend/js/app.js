@@ -177,7 +177,7 @@ function escapeAttr(s) {
   return String(s || '').replace(/\\/g, '\\\\').replace(/'/g, "\\'");
 }
 
-async function apiCall(endpoint, method = 'GET', body = null, isFormData = false, timeoutMs = 8000) {
+async function apiCall(endpoint, method = 'GET', body = null, isFormData = false, timeoutMs = 300000) {
   const headers = {};
   if (!isFormData) headers['Content-Type'] = 'application/json';
   const options = { method, headers, credentials: 'include' };
