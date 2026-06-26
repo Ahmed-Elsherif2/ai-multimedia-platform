@@ -1136,7 +1136,7 @@ async function selectDocument(fileId, fileName) {
   const title = $('selectedDocumentTitle');
   if (title) title.innerHTML = `<span class="text-slate-500 font-normal">Summary:</span> <span class="text-indigo-300">${escapeHtml(fileName)}</span>`;
   
-  ['summaryGroq', 'summaryTemplate', 'summaryT5'].forEach(id => {
+  ['summaryGroq', 'summaryTemplate'].forEach(id => {
     const el = $(id);
     if (el) el.innerHTML = '<span class="text-slate-600 text-sm italic">Loading…</span>';
   });
@@ -1161,8 +1161,6 @@ async function selectDocument(fileId, fileName) {
     if (g) g.innerHTML = '<span class="text-red-400 text-sm">Failed to load</span>';
     const t = $('summaryTemplate');
     if (t) t.textContent = 'N/A';
-    const t5 = $('summaryT5');
-    if (t5) t5.textContent = 'N/A';
   }
 }
 
@@ -1190,12 +1188,6 @@ function displaySummary(data) {
   const templateEl = document.getElementById('summaryTemplate');
   if (templateEl) {
     templateEl.textContent = data.template || '—';
-  }
-  
-  // T5 (legacy)
-  const t5El = document.getElementById('summaryT5');
-  if (t5El) {
-    t5El.textContent = data.t5 || '—';
   }
 }
 

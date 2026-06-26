@@ -283,8 +283,7 @@ def delete_transcript(file_id: str) -> bool:
 def upsert_summary(
     file_id: str,
     full_text: str,
-    groq: str = "",              # 🆕
-    t5: str = "",
+    groq: str = "",
     template: str = "",
     original_length: int = 0,
     summary_length: int = 0,
@@ -295,20 +294,19 @@ def upsert_summary(
     db = get_db()
     db.execute(
         """
-        INSERT INTO summaries (file_id, full_text, groq, t5, template,
+        INSERT INTO summaries (file_id, full_text, groq, template,
             original_length, summary_length, compression_ratio, model_used, created_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ON CONFLICT(file_id) DO UPDATE SET
             full_text         = excluded.full_text,
             groq              = excluded.groq,
-            t5                = excluded.t5,
             template          = excluded.template,
             original_length   = excluded.original_length,
             summary_length    = excluded.summary_length,
             compression_ratio = excluded.compression_ratio,
             model_used        = excluded.model_used
         """,
-        (file_id, full_text, groq, t5, template,
+        (file_id, full_text, groq, template,
          original_length, summary_length, compression_ratio, model_used,
          created_at or _now()),
     )

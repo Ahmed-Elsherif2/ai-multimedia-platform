@@ -80,9 +80,7 @@ class SummaryResponse:
     file_id:             str
     full_text_preview:   str   = ""
     full_text_length:    int   = 0
-    gemini:              str   = ""
-    gemma:               str   = ""
-    t5:                  str   = ""
+    groq:                str   = ""      # ✅ Primary
     template:            str   = ""
     compression_ratio:   float = 0.0
     model_used:          str   = "template"

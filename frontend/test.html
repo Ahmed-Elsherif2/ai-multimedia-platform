@@ -565,14 +565,6 @@
           </div>
           <div id="summaryTemplate" class="text-sm leading-relaxed text-slate-400">Select a document</div>
         </div>
-        <div class="glass rounded-2xl p-5 accent-slate opacity-60">
-          <div class="flex items-center gap-3 mb-3">
-            <div class="w-8 h-8 rounded-xl bg-white/[0.04] flex items-center justify-center"><i class="fa-solid fa-robot text-slate-400 text-sm"></i></div>
-            <h3 class="text-sm font-medium text-slate-400">T5 Summary</h3>
-            <span class="text-[10px] text-slate-600 ml-auto">Legacy</span>
-          </div>
-          <div id="summaryT5" class="text-sm leading-relaxed text-slate-500">Select a document</div>
-        </div>
       </div>
     </div>
   </div>
@@ -1154,7 +1146,7 @@ async function loadSummariesTab() {
 
 async function selectDocument(fileId, fileName) {
   document.getElementById('selectedDocumentTitle').innerHTML = `<span class="text-slate-500 font-normal">Summary:</span> <span class="text-indigo-300">${fileName}</span>`;
-  ['summaryGroq', 'summaryTemplate', 'summaryT5'].forEach(id => {
+  ['summaryGroq', 'summaryTemplate'].forEach(id => {
     const el = document.getElementById(id); if(el) el.innerHTML='<span class="text-slate-600 text-sm italic">Loading…</span>';
   });
   const chat = chats.find(c=>c.id===activeChatId);
@@ -1167,7 +1159,6 @@ async function selectDocument(fileId, fileName) {
   } catch(e) {
     document.getElementById('summaryGroq').innerHTML = '<span class="text-red-400 text-sm">Failed to load</span>';
     document.getElementById('summaryTemplate').innerHTML = '<span class="text-slate-600 text-sm">N/A</span>';
-    document.getElementById('summaryT5').innerHTML = '<span class="text-slate-600 text-sm">N/A</span>';
   }
 }
 
@@ -1181,11 +1172,6 @@ function displaySummary(data) {
   const templateEl = document.getElementById('summaryTemplate');
   if (templateEl) {
     templateEl.innerHTML = `<div class="whitespace-pre-wrap leading-relaxed text-slate-400 text-sm">${escapeHtml(t)}</div>`;
-  }
-  const t5 = data.t5 || 'N/A';
-  const t5El = document.getElementById('summaryT5');
-  if (t5El) {
-    t5El.innerHTML = `<div class="whitespace-pre-wrap leading-relaxed text-slate-500 text-sm">${escapeHtml(t5)}</div>`;
   }
 }
 

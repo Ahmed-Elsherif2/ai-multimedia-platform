@@ -174,7 +174,7 @@ def _rule_based(
             if s.get("groq"):
                 parts.append(f"**{name}** (Groq summary):\n{s['groq'][:1000]}")
             else:
-                parts.append(f"**{name}** (summary):\n{(s.get('template') or s.get('t5') or '')[:1000]}")
+                parts.append(f"**{name}** (summary):\n{(s.get('template') or '')[:1000]}")
         return "\n\n".join(parts)
 
     return None

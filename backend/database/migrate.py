@@ -126,7 +126,6 @@ for file_id, s in summaries.items():
         file_id           = file_id,
         full_text         = s.get("full_text", ""),
         gemma             = s.get("gemma", ""),
-        t5                = s.get("t5", ""),
         template          = s.get("template", ""),
         original_length   = s.get("original_length", 0),
         summary_length    = s.get("summary_length", s.get("gemma_length", 0)),

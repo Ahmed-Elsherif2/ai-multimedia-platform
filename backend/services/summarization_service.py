@@ -4,7 +4,6 @@ SummarizationService — PDF text extraction and multi-model summarization.
 Models
 ------
 Groq API        : Primary summarizer (FREE, 30 req/min)
-T5-small        : HuggingFace seq2seq — fast baseline
 Template        : Extractive heuristic — always available
 """
 from __future__ import annotations
@@ -62,14 +61,17 @@ class _GroqSummarizer(_BaseSummarizer):
         if self._client is not None:
             return
         from groq import Groq
+        import httpx
         
         api_key = os.getenv('GROQ_API_KEY')
         if not api_key:
             print("[SummarizationService] GROQ_API_KEY not set.")
             return
         
-        # ✅ CORRECT: Just pass api_key
-        self._client = Groq(api_key=api_key)
+        self._client = Groq(
+            api_key=api_key,
+            http_client=httpx.Client(timeout=60.0)
+        )
         print("[SummarizationService] Groq client ready.")
 
     def summarize(self, text: str, max_length: Optional[int] = None) -> str:
@@ -128,37 +130,6 @@ Make it scannable and well-organized. Use bold for emphasis where appropriate.
             return ""
 
 
-# ── T5 summarizer (FALLBACK) ─────────────────────────────────────────────────
-
-class _T5Summarizer(_BaseSummarizer):
-    def __init__(self, model_name: str = "t5-small"):
-        self._model_name = model_name
-        self._model = None
-        self._tokenizer = None
-
-    def _load(self):
-        if self._model is not None:
-            return
-        from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
-        print(f"[SummarizationService] loading {self._model_name}...")
-        self._tokenizer = AutoTokenizer.from_pretrained(self._model_name)
-        self._model = AutoModelForSeq2SeqLM.from_pretrained(self._model_name)
-
-    def summarize(self, text: str, max_length: Optional[int] = None) -> str:
-        self._load()
-        text = self._clean(self._truncate(text, 4000))
-        inputs = self._tokenizer(
-            f"summarize: {text}",
-            max_length=512, truncation=True, padding="max_length", return_tensors="pt",
-        )
-        outputs = self._model.generate(
-            **inputs,
-            max_length=max_length or 150,
-            min_length=30, num_beams=4, length_penalty=2.0, early_stopping=True,
-        )
-        return self._tokenizer.decode(outputs[0], skip_special_tokens=True).strip()
-
-
 # ── Template (extractive) ─────────────────────────────────────────────────────
 
 class _TemplateSummarizer(_BaseSummarizer):
@@ -193,11 +164,10 @@ class _TemplateSummarizer(_BaseSummarizer):
 # ── Public facade ─────────────────────────────────────────────────────────────
 
 class SummarizationService:
-    """Groq primary, T5 fallback, Template last resort."""
+    """Groq primary, Template fallback."""
 
     def __init__(self):
         self._groq = _GroqSummarizer()
-        # self._t5 = _T5Summarizer()
         self._template = _TemplateSummarizer(num_sentences=5)
 
     def summarize_pdf(self, pdf_path: Path) -> dict:
@@ -218,23 +188,9 @@ class SummarizationService:
         # 2. Template (Always available)
         template_summary = self._template.summarize(full_text)
 
-        # 3. T5 (Fallback) - ✅ Disabled via .env
-        t5_summary = ""
-        if os.getenv("DISABLE_T5") != "true":
-            try:
-                t5_summary = self._t5.summarize(full_text[:4000])
-                print(f"[SummarizationService] T5: {len(t5_summary)} chars")
-            except Exception as exc:
-                print(f"[SummarizationService] T5 skipped: {exc}")
-        else:
-            print("[SummarizationService] T5 disabled (DISABLE_T5=true)")
-
         if groq_summary:
             model_used = "groq-llama-3.3-70b"
             primary_summary = groq_summary
-        elif t5_summary:
-            model_used = "t5-small"
-            primary_summary = t5_summary
         else:
             model_used = "template-fallback"
             primary_summary = template_summary
@@ -244,7 +200,6 @@ class SummarizationService:
         return {
             "full_text": full_text,
             "groq": groq_summary,
-            "t5": t5_summary,
             "template": template_summary,
             "original_length": len(full_text),
             "summary_length": summary_len,

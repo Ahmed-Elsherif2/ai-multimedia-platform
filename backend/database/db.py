@@ -102,7 +102,6 @@ def init_db() -> None:
             file_id          TEXT PRIMARY KEY,
             full_text        TEXT    NOT NULL DEFAULT '',
             groq             TEXT    NOT NULL DEFAULT '',
-            t5               TEXT    NOT NULL DEFAULT '',
             template         TEXT    NOT NULL DEFAULT '',
             original_length  INTEGER NOT NULL DEFAULT 0,
             summary_length   INTEGER NOT NULL DEFAULT 0,
