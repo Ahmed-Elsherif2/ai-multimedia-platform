@@ -218,7 +218,7 @@ class SummarizationService:
         # 2. Template (Always available)
         template_summary = self._template.summarize(full_text)
 
-        # 3. T5 (Fallback) - Skip on Railway
+        # 3. T5 (Fallback) - ✅ Disabled via .env
         t5_summary = ""
         if os.getenv("DISABLE_T5") != "true":
             try:
