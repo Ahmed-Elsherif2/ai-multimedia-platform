@@ -97,7 +97,7 @@ def file_status(file_id):
     return jsonify({"status": f.get("status", "unknown")}), 200
 
 
-@transcript_bp.route("/process/<file_id>", methods=["POST", "OPTIONS"])
+@transcript_bp.route("/process_legacy/<file_id>", methods=["POST", "OPTIONS"])
 def process_audio(file_id):
     """Backward-compat: trigger pipeline via subprocess, then save to SQLite."""
     if request.method == "OPTIONS":

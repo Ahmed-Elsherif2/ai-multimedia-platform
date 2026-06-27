@@ -500,7 +500,7 @@ async function handleAudioUpload(e) {
 
     // ✅ Videos are uploaded as audio (no auto-processing)
     // They will be processed when user clicks "Process Content"
-    addActivity(`Uploading ${isVideo ? 'video' : 'audio'}: ${file.name}${isVideo}`, 'processing');
+    addActivity(`Uploading ${isVideo ? 'video' : 'audio'}: ${file.name}`, 'processing');
     const fd = new FormData();
     fd.append('audio', file, file.name);
     try {
@@ -704,7 +704,7 @@ async function processSingleFile(fileId, fileName, chatId, type) {
     if (type === 'pdf') {
       await apiCall(`/summarize/${fileId}`, 'POST', null, false, 120000);
     } else {
-      await apiCall(`/audio/process/${fileId}`, 'POST', null, false, 660000);
+      await apiCall(`/process/${fileId}`, 'POST', null, false, 660000);
     }
     
     clearInterval(iv);

@@ -41,12 +41,12 @@ CORS(app, supports_credentials=True)
 
 app.register_blueprint(auth_bp)
 app.register_blueprint(upload_bp)
-app.register_blueprint(transcript_bp)
+app.register_blueprint(transcript_bp) 
 app.register_blueprint(summary_bp)
 app.register_blueprint(emotion_bp)
 app.register_blueprint(rag_bp)
 app.register_blueprint(chat_bp)
-app.register_blueprint(audio_bp)
+app.register_blueprint(audio_bp)   
 app.register_blueprint(pdf_bp)
 
 
