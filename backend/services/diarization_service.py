@@ -74,6 +74,16 @@ class DiarizationService:
         """
         audio_path = Path(audio_path)
 
+        # ── Get audio duration for short audio fallback ─────────────────────
+        from services.audio_extraction_service import audio_extraction_service
+        duration = audio_extraction_service.get_duration(audio_path)
+
+        # ── Skip diarization for very short audio (< 16 seconds) ───────────
+        if duration < 16:
+            log.info(f"short audio ({duration:.1f}s) — using single-speaker fallback")
+            fallback = [{"start": 0.0, "end": round(duration, 2), "speaker": "SPEAKER_00"}]
+            return fallback, {"SPEAKER_00": fallback}, 1
+
         # If a non-WAV is passed, try an in-place conversion as a convenience
         wav_path: Optional[Path] = None
         if audio_path.suffix.lower() in {".mp4", ".mp3", ".m4a", ".mov", ".avi", ".mkv", ".webm"}:
@@ -81,15 +91,14 @@ class DiarizationService:
             if existing.exists():
                 audio_path = existing
             else:
-                from services.audio_extraction_service import audio_extraction_service
                 try:
-                    wav_path   = audio_extraction_service.extract_to_wav(audio_path)
+                    wav_path = audio_extraction_service.extract_to_wav(audio_path)
                     audio_path = wav_path
                 except Exception as exc:
                     log.warn(f"WAV conversion failed ({exc}) — using original file")
 
-        segments:     List[dict]          = []
-        speaker_segs: Dict[str, List]     = {}
+        segments: List[dict] = []
+        speaker_segs: Dict[str, List] = {}
 
         try:
             self._load()
@@ -104,10 +113,8 @@ class DiarizationService:
 
         # Single-speaker fallback
         if not speaker_segs:
-            from services.audio_extraction_service import audio_extraction_service
-            duration = audio_extraction_service.get_duration(audio_path)
             fallback = [{"start": 0.0, "end": round(duration, 2), "speaker": "SPEAKER_00"}]
-            segments     = fallback
+            segments = fallback
             speaker_segs = {"SPEAKER_00": fallback}
 
         # Clean up temp WAV created only for diarization
