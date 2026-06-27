@@ -154,30 +154,60 @@ print("[startup] ✅ Database initialized")
 # ─── Startup Preload ──────────────────────────────────────────────────────────
 
 def _preload():
-    """Warm up heavy models at startup so the first request doesn't stall."""
-    print("[startup] Preloading services...")
-    
-    # 1. Emotion service
+    """
+    Warm up ALL heavy models at startup so the first request doesn't stall.
+    This prevents Gunicorn worker timeouts on Railway.
+    """
+    print("[startup] 🚀 Preloading all AI models...")
+
+    # ── 1. Emotion Service ──
     try:
         from services.emotion_service import emotion_service
         emotion_service.analyze_segment("warmup")
-        print("[startup] ✅ Emotion models ready")
+        print("[startup] ✅ Emotion models ready (DistilBERT + RoBERTa-go_emotions)")
     except Exception as exc:
         print(f"[startup] ⚠️ Emotion warmup skipped: {exc}")
 
-    # 2. Check Groq configuration (your primary LLM)
+    # ── 2. Transcription Service (Faster‑Whisper) ──
+    try:
+        from services.transcription_service import transcription_service
+        # Force the model to load into memory
+        transcription_service._load()
+        print(f"[startup] ✅ Faster‑Whisper model ready (model={settings.WHISPER_MODEL}, device={transcription_service._device})")
+    except Exception as exc:
+        print(f"[startup] ⚠️ Whisper warmup failed: {exc}")
+
+    # ── 3. Diarization Service (Pyannote) – A HEAVY ONE ──
+    try:
+        from services.diarization_service import diarization_service
+        # Force the pipeline to download and load
+        diarization_service._load()
+        print(f"[startup] ✅ Pyannote diarization ready (model={settings.PYANNOTE_MODEL})")
+    except Exception as exc:
+        print(f"[startup] ⚠️ Diarization warmup failed: {exc}")
+
+    # ── 4. RAG Embedder (Sentence‑Transformers for FAISS) ──
+    try:
+        from services.rag_service import rag_service
+        # Force the embedding model to load
+        rag_service._get_embedder()
+        print(f"[startup] ✅ RAG embedding model ready (model={settings.EMBEDDING_MODEL})")
+    except Exception as exc:
+        print(f"[startup] ⚠️ RAG embedding warmup skipped: {exc}")
+
+    # ── 5. Groq API check ──
     if settings.GROQ_API_KEY:
         print("[startup] ✅ Groq API configured")
     else:
-        print("[startup] ⚠️ GROQ_API_KEY not set - Groq summarization disabled")
+        print("[startup] ⚠️ GROQ_API_KEY not set - summarization & RAG will fallback")
 
-    # 3. Check HF token (needed for diarization)
+    # ── 6. HF Token check ──
     if settings.HF_TOKEN:
         print("[startup] ✅ HF_TOKEN configured")
     else:
-        print("[startup] ⚠️ HF_TOKEN not set - diarization may fail")
+        print("[startup] ⚠️ HF_TOKEN not set - diarization will fail!")
 
-    # 4. Check data directories
+    # ── 7. Check data directories ──
     print(f"[startup] 📁 Data directory: {settings.DATA_DIR}")
     print(f"[startup] 📁 Upload directory: {settings.UPLOAD_FOLDER}")
     

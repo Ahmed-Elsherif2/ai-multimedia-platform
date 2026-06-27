@@ -4,7 +4,7 @@
     "builder": "DOCKERFILE"
   },
   "deploy": {
-    "startCommand": "/bin/sh -c \"gunicorn --chdir backend -w 2 -b 0.0.0.0:$PORT --timeout 300 app:app\"",
+    "startCommand": "gunicorn --chdir backend -w 2 -b 0.0.0.0:$PORT --timeout 600 app:app",
     "healthcheckPath": "/api/health",
     "healthcheckTimeout": 300,
     "restartPolicyType": "ON_FAILURE",
