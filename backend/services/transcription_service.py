@@ -1,11 +1,12 @@
 """
-TranscriptionService — speech-to-text via Faster Whisper.
+TranscriptionService — speech-to-text via Groq Whisper API.
 
-Uses faster-whisper (CTranslate2) for faster inference with lower memory usage.
-Falls back to OpenAI Whisper if faster-whisper is not available.
+Uses Groq's hosted Whisper API (whisper-large-v3-turbo) for fast,
+accurate transcription without local model loading.
 """
 from __future__ import annotations
 
+import os
 from pathlib import Path
 
 from config.settings import settings
@@ -16,139 +17,84 @@ log = get_logger("Transcription")
 
 class TranscriptionService:
     """
-    Wraps Faster Whisper for fast, memory-efficient transcription.
+    Wraps Groq's Whisper API for fast, cloud-based transcription.
     
-    Falls back to OpenAI Whisper if faster-whisper is not installed.
-    The model is lazy-loaded on first use and cached.
+    No local model loading – uses Groq's enterprise GPUs.
+    Free tier: 2,000 requests/day, 20 requests/minute.
     """
 
     def __init__(self):
-        self._model = None
-        self._device = "cpu"
-        self._compute_type = "int8"  # int8 for CPU, float16 for GPU
-
-    # ── Loader ────────────────────────────────────────────────────────────────
+        self._client = None
 
     def _load(self):
-        if self._model is not None:
+        """Lazy load the Groq client."""
+        if self._client is not None:
             return
         
-        from utils.gpu_utils import get_device
-        self._device = get_device(settings.TORCH_DEVICE)
+        from groq import Groq
         
-        # ⚠️ Force CPU on Windows to avoid OpenMP issues
-        import platform
-        if platform.system() == "Windows":
-            self._device = "cpu"
-            self._compute_type = "int8"
-        elif self._device == "cuda":
-            self._compute_type = "float16"
-        else:
-            self._compute_type = "int8"
-        
-        try:
-            from faster_whisper import WhisperModel
-            log.info(f"loading faster-whisper {settings.WHISPER_MODEL} on {self._device} (compute={self._compute_type})…")
-            self._model = WhisperModel(
-                settings.WHISPER_MODEL,
-                device=self._device,
-                compute_type=self._compute_type,
-                cpu_threads=4,
-                num_workers=2
+        api_key = settings.GROQ_API_KEY
+        if not api_key:
+            raise ValueError(
+                "GROQ_API_KEY not set. Get one from: https://console.groq.com/keys\n"
+                "Free tier: 2,000 requests/day, 20 requests/minute."
             )
-            log.info(f"faster-whisper ready (device={self._device})")
-            self._use_faster_whisper = True
-        except ImportError:
-            # Fallback to OpenAI Whisper
-            import whisper
-            self._model = whisper.load_model(settings.WHISPER_MODEL, device=self._device)
-            self._use_faster_whisper = False
-            log.info(f"OpenAI Whisper ready (device={self._device})")
-            return
         
-        self._use_faster_whisper = True
-
-    # ── Core transcription ────────────────────────────────────────────────────
+        self._client = Groq(api_key=api_key)
+        log.info("Groq Whisper API client ready")
 
     def transcribe(self, audio_path: Path) -> dict:
         """
-        Transcribe *audio_path* and return the raw Whisper result dict.
+        Transcribe audio using Groq's hosted Whisper API.
         
-        Returns a dict compatible with OpenAI Whisper's output format,
-        so TranscriptAlignmentService works without changes.
+        Returns a dict compatible with OpenAI Whisper's output format.
         """
         self._load()
-        log.info(f"transcribing {Path(audio_path).name}…")
-        
-        if self._use_faster_whisper:
-            return self._transcribe_faster(audio_path)
-        else:
-            return self._transcribe_openai(audio_path)
+        audio_path = Path(audio_path)
+        log.info(f"transcribing {audio_path.name} via Groq Whisper API...")
 
-    def _transcribe_faster(self, audio_path: Path) -> dict:
-        """Transcribe using Faster Whisper (CTranslate2)."""
-        segments, info = self._model.transcribe(
-            str(audio_path),
-            beam_size=3,
-            language="en",
-            word_timestamps=True,
-            vad_filter=True,  # Voice Activity Detection filter
-            vad_parameters=dict(
-                threshold=0.5,
-                min_speech_duration_ms=250,
-                min_silence_duration_ms=100,
-            ),
-        )
-        
-        # Convert to OpenAI Whisper format for compatibility
-        segments_list = []
-        full_text = []
-        
-        for seg in segments:
-            seg_dict = {
-                "id": len(segments_list),
-                "seek": 0,
-                "start": seg.start,
-                "end": seg.end,
-                "text": seg.text,
-                "tokens": [],
-                "temperature": 0.0,
-                "avg_logprob": -0.2,
-                "compression_ratio": 1.0,
-                "no_speech_prob": 0.0,
+        try:
+            with open(audio_path, "rb") as file:
+                transcription = self._client.audio.transcriptions.create(
+                    file=(audio_path.name, file.read()),
+                    model="whisper-large-v3-turbo",  # Fastest model
+                    response_format="verbose_json",   # Returns timestamps
+                    language="en",
+                )
+            
+            # Convert to OpenAI-compatible format for alignment
+            result = {
+                "text": transcription.text,
+                "segments": [],
+                "language": getattr(transcription, "language", "en"),
             }
             
-            # Add word-level timestamps if available
-            if hasattr(seg, 'words') and seg.words:
-                seg_dict["words"] = [
-                    {"word": w.word, "start": w.start, "end": w.end, "probability": w.probability}
-                    for w in seg.words
-                ]
+            # Convert segments to OpenAI format
+            if hasattr(transcription, "segments") and transcription.segments:
+                for i, seg in enumerate(transcription.segments):
+                    result["segments"].append({
+                        "id": i,
+                        "start": seg.start,
+                        "end": seg.end,
+                        "text": seg.text,
+                        "words": [],
+                    })
             else:
-                # Fallback: no word timestamps
-                seg_dict["words"] = []
+                # Fallback: treat entire text as one segment
+                result["segments"] = [{
+                    "id": 0,
+                    "start": 0.0,
+                    "end": 0.0,
+                    "text": transcription.text,
+                    "words": [],
+                }]
             
-            segments_list.append(seg_dict)
-            full_text.append(seg.text)
-        
-        return {
-            "text": " ".join(full_text).strip(),
-            "segments": segments_list,
-            "language": "en",
-        }
+            log.info(f"transcription complete: {len(result['text'])} chars")
+            return result
 
-    def _transcribe_openai(self, audio_path: Path) -> dict:
-        """Transcribe using OpenAI Whisper (fallback)."""
-        import whisper
-        result = self._model.transcribe(
-            str(audio_path),
-            fp16=(self._device == "cuda"),
-            word_timestamps=True,
-            condition_on_previous_text=False,
-        )
-        return result
-
-    # ── Convenience wrapper ───────────────────────────────────────────────────
+        except Exception as exc:
+            log.error(f"Groq API error: {exc}")
+            raise RuntimeError(f"Transcription failed: {exc}")
 
     def transcribe_and_align(
         self,
@@ -157,8 +103,6 @@ class TranscriptionService:
     ) -> tuple:
         """
         Shortcut: transcribe then align in one call.
-
-        Returns the same four-tuple as TranscriptAlignmentService.align().
         """
         from services.transcript_alignment_service import transcript_alignment_service
         whisper_result = self.transcribe(audio_path)
@@ -188,4 +132,5 @@ class TranscriptionService:
         }
 
 
+# Module-level singleton
 transcription_service = TranscriptionService()
