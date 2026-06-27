@@ -9,7 +9,6 @@ from __future__ import annotations
 
 import os
 import sys
-import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -50,6 +49,70 @@ app.register_blueprint(chat_bp)
 app.register_blueprint(audio_bp)
 app.register_blueprint(pdf_bp)
 
+# ── Lazy Model Loader (First Request) ──────────────────────────────────────
+
+_model_loaded = False
+
+@app.before_request
+def load_models_on_first_request():
+    """
+    Load models on the very first request, not at startup.
+    This works reliably under Gunicorn and prevents healthcheck timeouts.
+    """
+    global _model_loaded
+    if _model_loaded:
+        return
+    
+    print("[startup] 🚀 Loading models on first request...")
+    print("[startup] This may take 2-3 minutes on first run...")
+    
+    # ── 1. Emotion Service ──
+    try:
+        from services.emotion_service import emotion_service
+        emotion_service.analyze_segment("warmup")
+        print("[startup] ✅ Emotion models ready (DistilBERT + RoBERTa-go_emotions)")
+    except Exception as exc:
+        print(f"[startup] ⚠️ Emotion warmup skipped: {exc}")
+
+    # ── 2. Transcription Service (Groq Whisper API) ──
+    try:
+        if settings.GROQ_API_KEY:
+            print("[startup] ✅ Groq Whisper API ready (model: whisper-large-v3-turbo)")
+        else:
+            print("[startup] ⚠️ GROQ_API_KEY not set - transcription will fail!")
+    except Exception as exc:
+        print(f"[startup] ⚠️ Whisper warmup failed: {exc}")
+
+    # ── 3. Diarization Service (Pyannote) ──
+    try:
+        from services.diarization_service import diarization_service
+        diarization_service._load()
+        print(f"[startup] ✅ Pyannote diarization ready (model={settings.PYANNOTE_MODEL})")
+    except Exception as exc:
+        print(f"[startup] ⚠️ Diarization warmup failed: {exc}")
+
+    # ── 4. RAG Embedder (Sentence‑Transformers for FAISS) ──
+    try:
+        from services.rag_service import rag_service
+        rag_service._get_embedder()
+        print(f"[startup] ✅ RAG embedding model ready (model={settings.EMBEDDING_MODEL})")
+    except Exception as exc:
+        print(f"[startup] ⚠️ RAG embedding warmup skipped: {exc}")
+
+    # ── 5. Groq API check ──
+    if settings.GROQ_API_KEY:
+        print("[startup] ✅ Groq API configured (LLM + Whisper)")
+    else:
+        print("[startup] ⚠️ GROQ_API_KEY not set - summarization, RAG & transcription will fail")
+
+    # ── 6. HF Token check ──
+    if settings.HF_TOKEN:
+        print("[startup] ✅ HF_TOKEN configured")
+    else:
+        print("[startup] ⚠️ HF_TOKEN not set - diarization will fail!")
+
+    _model_loaded = True
+    print("[startup] ✅ All models loaded! Subsequent requests will be fast.")
 
 # ── Health & Info ─────────────────────────────────────────────────────────────
 
@@ -63,6 +126,7 @@ def health():
         "groq_configured": bool(settings.GROQ_API_KEY),
         "hf_configured": bool(settings.HF_TOKEN),
         "auth_enabled": True,
+        "models_loaded": _model_loaded,
     }), 200
 
 
@@ -148,90 +212,8 @@ def too_large(e):
 
 
 # ─── Initialize database on startup ──────────────────────────────────────────
-# init_db()
-# print("[startup] ✅ Database initialized")
-
-
-# ─── Startup Preload ──────────────────────────────────────────────────────────
-
-def _preload():
-    """
-    Warm up ALL heavy models at startup so the first request doesn't stall.
-    This prevents Gunicorn worker timeouts on Railway.
-    """
-    print("[startup] 🚀 Preloading all AI models...")
-
-    # ── 1. Emotion Service ──
-    try:
-        from services.emotion_service import emotion_service
-        emotion_service.analyze_segment("warmup")
-        print("[startup] ✅ Emotion models ready (DistilBERT + RoBERTa-go_emotions)")
-    except Exception as exc:
-        print(f"[startup] ⚠️ Emotion warmup skipped: {exc}")
-
-    # ── 2. Transcription Service (Groq Whisper API) ──
-    try:
-        from services.transcription_service import transcription_service
-        # Just check if Groq API key is configured (no local model to load)
-        if settings.GROQ_API_KEY:
-            print(f"[startup] ✅ Groq Whisper API ready (model: whisper-large-v3-turbo)")
-        else:
-            print("[startup] ⚠️ GROQ_API_KEY not set - transcription will fail!")
-    except Exception as exc:
-        print(f"[startup] ⚠️ Whisper warmup failed: {exc}")
-
-    # ── 3. Diarization Service (Pyannote) ──
-    try:
-        from services.diarization_service import diarization_service
-        # Force the pipeline to download and load
-        diarization_service._load()
-        print(f"[startup] ✅ Pyannote diarization ready (model={settings.PYANNOTE_MODEL})")
-    except Exception as exc:
-        print(f"[startup] ⚠️ Diarization warmup failed: {exc}")
-
-    # ── 4. RAG Embedder (Sentence‑Transformers for FAISS) ──
-    try:
-        from services.rag_service import rag_service
-        # Force the embedding model to load
-        rag_service._get_embedder()
-        print(f"[startup] ✅ RAG embedding model ready (model={settings.EMBEDDING_MODEL})")
-    except Exception as exc:
-        print(f"[startup] ⚠️ RAG embedding warmup skipped: {exc}")
-
-    # ── 5. Groq API check ──
-    if settings.GROQ_API_KEY:
-        print("[startup] ✅ Groq API configured (LLM + Whisper)")
-    else:
-        print("[startup] ⚠️ GROQ_API_KEY not set - summarization, RAG & transcription will fail")
-
-    # ── 6. HF Token check ──
-    if settings.HF_TOKEN:
-        print("[startup] ✅ HF_TOKEN configured")
-    else:
-        print("[startup] ⚠️ HF_TOKEN not set - diarization will fail!")
-
-    # ── 7. Check data directories ──
-    print(f"[startup] 📁 Data directory: {settings.DATA_DIR}")
-    print(f"[startup] 📁 Upload directory: {settings.UPLOAD_FOLDER}")
-    
-    print("[startup] ✅ All services initialized")
-
-
-# ── Preload models in the background ──
-def preload_async():
-    """Run preload in a background thread so healthcheck doesn't timeout."""
-    import time
-    time.sleep(5)  # Give the app a moment to start
-    _preload()
-
-# Start preload in background (non-blocking)
-# threading.Thread(target=preload_async, daemon=True).start()
-# print("[startup] 🔄 Models preloading in background...")
-
-# ══════════════════════════════════════════════════════════════════════════════
-# 🚀 PRELOAD MODELS NOW – this runs when Gunicorn imports the app
-# ══════════════════════════════════════════════════════════════════════════════
-_preload()
+init_db()
+print("[startup] ✅ Database initialized")
 
 
 # ─── Local development entry point ──────────────────────────────────────────
@@ -241,10 +223,6 @@ if __name__ == "__main__":
     print(f"  🌐 http://0.0.0.0:{settings.PORT}")
     print(f"  🔧 Environment: {settings.ENVIRONMENT}")
     print("=" * 60)
-    
-    # Models are already loaded from the global call, but we keep this for safety
-    # (it will be a no‑op if already loaded, but just in case)
-    _preload()
     
     app.run(
         debug=settings.DEBUG,
