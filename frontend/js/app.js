@@ -704,7 +704,7 @@ async function processSingleFile(fileId, fileName, chatId, type) {
     if (type === 'pdf') {
       await apiCall(`/summarize/${fileId}`, 'POST', null, false, 120000);
     } else {
-      await apiCall(`/process/${fileId}`, 'POST', null, false, 660000);
+      await apiCall(`/audio/process/${fileId}`, 'POST', null, false, 660000);
     }
     
     clearInterval(iv);
