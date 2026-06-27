@@ -9,6 +9,7 @@ from __future__ import annotations
 
 import os
 import sys
+import threading
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -168,16 +169,18 @@ def _preload():
     except Exception as exc:
         print(f"[startup] ⚠️ Emotion warmup skipped: {exc}")
 
-    # ── 2. Transcription Service (Faster‑Whisper) ──
+    # ── 2. Transcription Service (Groq Whisper API) ──
     try:
         from services.transcription_service import transcription_service
-        # Force the model to load into memory
-        transcription_service._load()
-        print(f"[startup] ✅ Faster‑Whisper model ready (model={settings.WHISPER_MODEL}, device={transcription_service._device})")
+        # Just check if Groq API key is configured (no local model to load)
+        if settings.GROQ_API_KEY:
+            print(f"[startup] ✅ Groq Whisper API ready (model: whisper-large-v3-turbo)")
+        else:
+            print("[startup] ⚠️ GROQ_API_KEY not set - transcription will fail!")
     except Exception as exc:
         print(f"[startup] ⚠️ Whisper warmup failed: {exc}")
 
-    # ── 3. Diarization Service (Pyannote) – A HEAVY ONE ──
+    # ── 3. Diarization Service (Pyannote) ──
     try:
         from services.diarization_service import diarization_service
         # Force the pipeline to download and load
@@ -197,9 +200,9 @@ def _preload():
 
     # ── 5. Groq API check ──
     if settings.GROQ_API_KEY:
-        print("[startup] ✅ Groq API configured")
+        print("[startup] ✅ Groq API configured (LLM + Whisper)")
     else:
-        print("[startup] ⚠️ GROQ_API_KEY not set - summarization & RAG will fallback")
+        print("[startup] ⚠️ GROQ_API_KEY not set - summarization, RAG & transcription will fail")
 
     # ── 6. HF Token check ──
     if settings.HF_TOKEN:
@@ -213,6 +216,17 @@ def _preload():
     
     print("[startup] ✅ All services initialized")
 
+
+# ── Preload models in the background ──
+def preload_async():
+    """Run preload in a background thread so healthcheck doesn't timeout."""
+    import time
+    time.sleep(5)  # Give the app a moment to start
+    _preload()
+
+# Start preload in background (non-blocking)
+threading.Thread(target=preload_async, daemon=True).start()
+print("[startup] 🔄 Models preloading in background...")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🚀 PRELOAD MODELS NOW – this runs when Gunicorn imports the app
