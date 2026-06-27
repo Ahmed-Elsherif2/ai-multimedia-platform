@@ -148,8 +148,8 @@ def too_large(e):
 
 
 # ─── Initialize database on startup ──────────────────────────────────────────
-init_db()
-print("[startup] ✅ Database initialized")
+# init_db()
+# print("[startup] ✅ Database initialized")
 
 
 # ─── Startup Preload ──────────────────────────────────────────────────────────
@@ -225,8 +225,8 @@ def preload_async():
     _preload()
 
 # Start preload in background (non-blocking)
-threading.Thread(target=preload_async, daemon=True).start()
-print("[startup] 🔄 Models preloading in background...")
+# threading.Thread(target=preload_async, daemon=True).start()
+# print("[startup] 🔄 Models preloading in background...")
 
 # ══════════════════════════════════════════════════════════════════════════════
 # 🚀 PRELOAD MODELS NOW – this runs when Gunicorn imports the app

@@ -74,6 +74,7 @@ class DiarizationService:
         """
         audio_path = Path(audio_path)
 
+        """
         # ── Get audio duration for short audio fallback ─────────────────────
         from services.audio_extraction_service import audio_extraction_service
         duration = audio_extraction_service.get_duration(audio_path)
@@ -83,6 +84,7 @@ class DiarizationService:
             log.info(f"short audio ({duration:.1f}s) — using single-speaker fallback")
             fallback = [{"start": 0.0, "end": round(duration, 2), "speaker": "SPEAKER_00"}]
             return fallback, {"SPEAKER_00": fallback}, 1
+        """
 
         # If a non-WAV is passed, try an in-place conversion as a convenience
         wav_path: Optional[Path] = None

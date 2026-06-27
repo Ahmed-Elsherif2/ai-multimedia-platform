@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11.7
 
 # Install ffmpeg for audio processing
 RUN apt-get update && apt-get install -y \
@@ -16,6 +16,11 @@ COPY . .
 
 # Create data directory
 RUN mkdir -p /app/data/uploads /app/data/results /app/data/status
+
+# ──────────────────────────────────────────────────────────────
+# 🚀 PRELOAD ALL MODELS DURING BUILD (using the script)
+# ──────────────────────────────────────────────────────────────
+RUN python backend/preload_models.py
 
 # Set environment variables
 ENV PYTHONUNBUFFERED=1
