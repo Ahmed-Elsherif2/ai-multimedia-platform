@@ -214,6 +214,13 @@ def _preload():
     print("[startup] ✅ All services initialized")
 
 
+# ══════════════════════════════════════════════════════════════════════════════
+# 🚀 PRELOAD MODELS NOW – this runs when Gunicorn imports the app
+# ══════════════════════════════════════════════════════════════════════════════
+_preload()
+
+
+# ─── Local development entry point ──────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
     print(f"  🚀 AI Multimedia Platform v2.0")
@@ -221,6 +228,8 @@ if __name__ == "__main__":
     print(f"  🔧 Environment: {settings.ENVIRONMENT}")
     print("=" * 60)
     
+    # Models are already loaded from the global call, but we keep this for safety
+    # (it will be a no‑op if already loaded, but just in case)
     _preload()
     
     app.run(
