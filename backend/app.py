@@ -49,75 +49,20 @@ app.register_blueprint(chat_bp)
 app.register_blueprint(audio_bp)
 app.register_blueprint(pdf_bp)
 
-# ── Lazy Model Loader (First Request) ──────────────────────────────────────
-
-_model_loaded = False
-
-@app.before_request
-def load_models_on_first_request():
-    """
-    Load models on the very first request, not at startup.
-    This works reliably under Gunicorn and prevents healthcheck timeouts.
-    """
-    global _model_loaded
-    if _model_loaded:
-        return
-    
-    print("[startup] 🚀 Loading models on first request...")
-    print("[startup] This may take 2-3 minutes on first run...")
-    
-    # ── 1. Emotion Service ──
-    try:
-        from services.emotion_service import emotion_service
-        emotion_service.analyze_segment("warmup")
-        print("[startup] ✅ Emotion models ready (DistilBERT + RoBERTa-go_emotions)")
-    except Exception as exc:
-        print(f"[startup] ⚠️ Emotion warmup skipped: {exc}")
-
-    # ── 2. Transcription Service (Groq Whisper API) ──
-    try:
-        if settings.GROQ_API_KEY:
-            print("[startup] ✅ Groq Whisper API ready (model: whisper-large-v3-turbo)")
-        else:
-            print("[startup] ⚠️ GROQ_API_KEY not set - transcription will fail!")
-    except Exception as exc:
-        print(f"[startup] ⚠️ Whisper warmup failed: {exc}")
-
-    # ── 3. Diarization Service (Pyannote) ──
-    try:
-        from services.diarization_service import diarization_service
-        diarization_service._load()
-        print(f"[startup] ✅ Pyannote diarization ready (model={settings.PYANNOTE_MODEL})")
-    except Exception as exc:
-        print(f"[startup] ⚠️ Diarization warmup failed: {exc}")
-
-    # ── 4. RAG Embedder (Sentence‑Transformers for FAISS) ──
-    try:
-        from services.rag_service import rag_service
-        rag_service._get_embedder()
-        print(f"[startup] ✅ RAG embedding model ready (model={settings.EMBEDDING_MODEL})")
-    except Exception as exc:
-        print(f"[startup] ⚠️ RAG embedding warmup skipped: {exc}")
-
-    # ── 5. Groq API check ──
-    if settings.GROQ_API_KEY:
-        print("[startup] ✅ Groq API configured (LLM + Whisper)")
-    else:
-        print("[startup] ⚠️ GROQ_API_KEY not set - summarization, RAG & transcription will fail")
-
-    # ── 6. HF Token check ──
-    if settings.HF_TOKEN:
-        print("[startup] ✅ HF_TOKEN configured")
-    else:
-        print("[startup] ⚠️ HF_TOKEN not set - diarization will fail!")
-
-    _model_loaded = True
-    print("[startup] ✅ All models loaded! Subsequent requests will be fast.")
 
 # ── Health & Info ─────────────────────────────────────────────────────────────
 
 @app.route("/api/health")
 def health():
+    # Check if models are ready by testing if Pyannote loaded
+    models_ready = False
+    try:
+        from services.diarization_service import diarization_service
+        # Check if pipeline is loaded (won't download, just checks memory)
+        models_ready = diarization_service._pipeline is not None
+    except:
+        pass
+    
     return jsonify({
         "status": "ok",
         "version": "2.0",
@@ -126,7 +71,7 @@ def health():
         "groq_configured": bool(settings.GROQ_API_KEY),
         "hf_configured": bool(settings.HF_TOKEN),
         "auth_enabled": True,
-        "models_loaded": _model_loaded,
+        "models_ready": models_ready,
     }), 200
 
 
@@ -216,6 +161,68 @@ init_db()
 print("[startup] ✅ Database initialized")
 
 
+# ─── CONSOLE PRELOAD FUNCTION ───────────────────────────────────────────────
+# Run this from Railway console: cd /app/backend && python -c "from app import console_preload; console_preload()"
+
+def console_preload():
+    """
+    Preload all models – run this ONCE from the Railway console.
+    This will download models to /root/.cache/huggingface (your volume).
+    After this, all subsequent requests will be fast.
+    
+    How to run:
+        cd /app/backend
+        python -c "from app import console_preload; console_preload()"
+    """
+    import time
+    
+    print("=" * 60)
+    print("🚀 PRELOADING MODELS – RUNNING ON RAILWAY CONSOLE")
+    print("=" * 60)
+    
+    print(f"📁 Data directory: {settings.DATA_DIR}")
+    print(f"📁 HF_TOKEN set: {'✅' if settings.HF_TOKEN else '❌'}")
+    print(f"📁 GROQ_API_KEY set: {'✅' if settings.GROQ_API_KEY else '❌'}")
+    print("")
+    
+    # ── 1. Emotion models ──
+    print("📊 Loading Emotion models (DistilBERT + RoBERTa-go_emotions)...")
+    start = time.time()
+    try:
+        from services.emotion_service import emotion_service
+        emotion_service.analyze_segment("warmup")
+        print(f"✅ Emotion models loaded in {time.time() - start:.1f}s")
+    except Exception as e:
+        print(f"⚠️ Emotion failed: {e}")
+    
+    # ── 2. Pyannote (HEAVY) ──
+    print("🎙️ Loading Pyannote diarization (this takes 2-3 minutes)...")
+    start = time.time()
+    try:
+        from services.diarization_service import diarization_service
+        diarization_service._load()
+        print(f"✅ Pyannote loaded in {time.time() - start:.1f}s")
+    except Exception as e:
+        print(f"⚠️ Pyannote failed: {e}")
+    
+    # ── 3. RAG embedder ──
+    print("🧠 Loading RAG embedding model (sentence-transformers)...")
+    start = time.time()
+    try:
+        from services.rag_service import rag_service
+        rag_service._get_embedder()
+        print(f"✅ RAG embedder loaded in {time.time() - start:.1f}s")
+    except Exception as e:
+        print(f"⚠️ RAG embedder failed: {e}")
+    
+    print("")
+    print("=" * 60)
+    print("✅ All models preloaded!")
+    print("📁 Models saved to: /root/.cache/huggingface")
+    print("🔄 This volume will persist across restarts and deployments")
+    print("=" * 60)
+
+
 # ─── Local development entry point ──────────────────────────────────────────
 if __name__ == "__main__":
     print("=" * 60)
@@ -223,6 +230,9 @@ if __name__ == "__main__":
     print(f"  🌐 http://0.0.0.0:{settings.PORT}")
     print(f"  🔧 Environment: {settings.ENVIRONMENT}")
     print("=" * 60)
+    
+    # For local development, preload models
+    console_preload()
     
     app.run(
         debug=settings.DEBUG,
