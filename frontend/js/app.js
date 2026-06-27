@@ -500,7 +500,7 @@ async function handleAudioUpload(e) {
 
     // ✅ Videos are uploaded as audio (no auto-processing)
     // They will be processed when user clicks "Process Content"
-    addActivity(`Uploading ${isVideo ? 'video' : 'audio'}: ${file.name}${isVideo ? ' (will process later)' : ''}`, 'processing');
+    addActivity(`Uploading ${isVideo ? 'video' : 'audio'}: ${file.name}${isVideo}`, 'processing');
     const fd = new FormData();
     fd.append('audio', file, file.name);
     try {
