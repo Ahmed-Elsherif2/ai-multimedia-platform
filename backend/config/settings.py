@@ -14,6 +14,11 @@ from dotenv import load_dotenv
 
 load_dotenv()
 
+# ── Set Hugging Face cache directory ──
+HF_CACHE = os.getenv("HF_HOME", "/root/.cache/huggingface")
+os.environ["HF_HOME"] = HF_CACHE
+os.environ["TRANSFORMERS_CACHE"] = HF_CACHE
+os.environ["HUGGINGFACE_HUB_CACHE"] = HF_CACHE
 
 class Settings:
     # ── Base Directories ──────────────────────────────────────────────────────

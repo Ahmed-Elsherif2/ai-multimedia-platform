@@ -32,6 +32,7 @@ class TranscriptionService:
             return
         
         from groq import Groq
+        import httpx
         
         api_key = settings.GROQ_API_KEY
         if not api_key:
@@ -40,7 +41,12 @@ class TranscriptionService:
                 "Free tier: 2,000 requests/day, 20 requests/minute."
             )
         
-        self._client = Groq(api_key=api_key)
+        self._client = Groq(
+            api_key=api_key,
+            http_client=httpx.Client(
+                timeout=httpx.Timeout(120.0, connect=30.0)  # 120s total, 30s connect
+            )
+        )
         log.info("Groq Whisper API client ready")
 
     def transcribe(self, audio_path: Path) -> dict:
@@ -57,26 +63,36 @@ class TranscriptionService:
             with open(audio_path, "rb") as file:
                 transcription = self._client.audio.transcriptions.create(
                     file=(audio_path.name, file.read()),
-                    model="whisper-large-v3-turbo",  # Fastest model
-                    response_format="verbose_json",   # Returns timestamps
+                    model="whisper-large-v3-turbo",
+                    response_format="verbose_json",
                     language="en",
                 )
             
-            # Convert to OpenAI-compatible format for alignment
+            # ── Convert Groq response to OpenAI-compatible format ──
             result = {
                 "text": transcription.text,
                 "segments": [],
                 "language": getattr(transcription, "language", "en"),
             }
             
-            # Convert segments to OpenAI format
+            # ── Check if transcription is a dict or object ──
             if hasattr(transcription, "segments") and transcription.segments:
                 for i, seg in enumerate(transcription.segments):
+                    # Handle if seg is a dict or object
+                    if isinstance(seg, dict):
+                        start = seg.get("start", 0.0)
+                        end = seg.get("end", 0.0)
+                        text = seg.get("text", "")
+                    else:
+                        start = getattr(seg, "start", 0.0)
+                        end = getattr(seg, "end", 0.0)
+                        text = getattr(seg, "text", "")
+                    
                     result["segments"].append({
                         "id": i,
-                        "start": seg.start,
-                        "end": seg.end,
-                        "text": seg.text,
+                        "start": float(start),
+                        "end": float(end),
+                        "text": text,
                         "words": [],
                     })
             else:
@@ -89,11 +105,13 @@ class TranscriptionService:
                     "words": [],
                 }]
             
-            log.info(f"transcription complete: {len(result['text'])} chars")
+            log.info(f"transcription complete: {len(result['text'])} chars, {len(result['segments'])} segments")
             return result
 
         except Exception as exc:
             log.error(f"Groq API error: {exc}")
+            import traceback
+            traceback.print_exc()
             raise RuntimeError(f"Transcription failed: {exc}")
 
     def transcribe_and_align(

@@ -108,6 +108,16 @@ def process_audio(file_id):
     if not audio_path.exists():
         return jsonify({"error": "Audio file missing from disk"}), 404
     
+    # ── Check audio duration BEFORE processing ──
+    from services.audio_extraction_service import audio_extraction_service
+    duration = audio_extraction_service.get_duration(audio_path)
+    print(f"[audio] Audio file: {audio_path.name}")
+    print(f"[audio] File size: {audio_path.stat().st_size / 1024:.1f} KB")
+    print(f"[audio] Audio duration: {duration:.2f}s")
+    
+    if duration < 16:
+        print(f"[audio] ⚡ Short audio ({duration:.2f}s) – using fallback, skipping Pyannote diarization!")
+    
     status_tracker.set_status(file_id, "processing")
     queries.update_file_status(file_id, "processing")
     
@@ -118,13 +128,17 @@ def process_audio(file_id):
         
         print(f"[audio] Starting processing for {file_id} (user: {user_id})")
         
-        # 1. Diarization first
+        # 1. Diarization first (will use fallback for short audio)
+        print(f"[audio] Step 1: Diarization...")
         segments, speaker_segs, speaker_count = diarization_service.diarize(audio_path)
+        print(f"[audio] Diarization complete: {speaker_count} speaker(s), {len(segments)} segments")
         
         # 2. Transcription with alignment
+        print(f"[audio] Step 2: Transcription (Groq Whisper API)...")
         full_text, per_speaker, segs_with_text, conversation = (
             transcription_service.transcribe_and_align(audio_path, speaker_segs)
         )
+        print(f"[audio] Transcription complete: {len(full_text)} characters")
         
         transcript_result = {
             "full_text": full_text,
@@ -135,6 +149,7 @@ def process_audio(file_id):
         }
         
         # 3. Emotion analysis
+        print(f"[audio] Step 3: Emotion analysis...")
         emotion_result = None
         if segs_with_text:
             emotion_report = emotion_service.analyze_segments(segs_with_text)
@@ -143,6 +158,9 @@ def process_audio(file_id):
                 "per_speaker_emotion": emotion_report.per_speaker_emotion,
                 "timeline": emotion_report.timeline
             }
+            print(f"[audio] Emotion analysis complete: dominant={emotion_report.overall.get('dominant_emotion', 'unknown')}")
+        else:
+            print(f"[audio] ⚠️ No segments for emotion analysis")
         
         results = {
             "transcript": transcript_result,
@@ -156,7 +174,7 @@ def process_audio(file_id):
             conversation=conversation,
             per_speaker=per_speaker,
             speaker_count=speaker_count,
-            duration="",
+            duration=str(duration),
             emotion_analysis=emotion_result,
             created_at=datetime.now().isoformat()
         )
@@ -165,7 +183,7 @@ def process_audio(file_id):
         queries.update_file_status(file_id, "completed")
         status_tracker.set_status(file_id, "done", {"results": results})
         
-        print(f"[audio] completed {file_id} (user: {user_id})")
+        print(f"[audio] ✅ completed {file_id} in {duration:.1f}s audio duration (user: {user_id})")
         return jsonify({
             "status": "completed",
             "file_id": file_id,
@@ -175,7 +193,7 @@ def process_audio(file_id):
     except Exception as exc:
         queries.update_file_status(file_id, "failed")
         status_tracker.set_status(file_id, "failed", {"error": str(exc)})
-        print(f"[audio] error: {exc}")
+        print(f"[audio] ❌ error: {exc}")
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(exc)}), 500

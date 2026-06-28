@@ -160,7 +160,9 @@ class MediaService:
         """Run diarization; always returns a result — falls back to single speaker on any error."""
         try:
             from services.diarization_service import diarization_service
-            return diarization_service.diarize(wav_path)
+            result = diarization_service.diarize(wav_path)
+            log.info(f"diarization complete: {result[2]} speakers")
+            return result
         except Exception as exc:
             log.warn(f"diarization failed ({exc}), using single-speaker fallback")
             dur = duration_seconds or 600.0

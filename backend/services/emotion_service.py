@@ -125,14 +125,33 @@ class EmotionService:
         timeline: List[dict]    = []
         speaker_emotions: dict  = defaultdict(list)
 
-        for seg in segments:
-            text    = seg.get("text", "")
+        print(f"[EmotionService] 📊 Analyzing {len(segments)} segments...")
+
+        if not segments:
+            print("[EmotionService] ⚠️ No segments to analyze!")
+            return EmotionReport(
+                segments=[],
+                overall={"dominant_emotion": "neutral", "dominant_sentiment": "neutral"},
+                per_speaker_emotion={},
+                timeline=[]
+            )
+
+        for idx, seg in enumerate(segments):
+            text = seg.get("text", "").strip()
             speaker = seg.get("speaker", "UNKNOWN")
-            result  = self.analyze_segment(text)
+
+            # Log first 5 segments only to avoid spam
+            if idx < 5:
+                word_count = len(text.split())
+                print(f"[EmotionService] Segment {idx}: '{text[:60]}...' ({word_count} words)")
+
+            result = self.analyze_segment(text)
             seg_out = dict(seg)
             seg_out["emotion"] = None
 
             if result:
+                if idx < 5:
+                    print(f"[EmotionService]   ✅ emotion={result.emotion}, sentiment={result.sentiment}")
                 seg_out["emotion"] = {
                     "emotion":              result.emotion,
                     "emotion_confidence":   result.emotion_confidence,
@@ -152,11 +171,20 @@ class EmotionService:
                     "sentiment":  result.sentiment,
                     "confidence": result.emotion_confidence,
                 })
+            elif idx < 5:
+                print(f"[EmotionService]   ❌ No result (text too short or analysis failed)")
 
             enriched.append(seg_out)
 
-        overall           = self._compute_overall(timeline)
-        per_speaker       = self._compute_per_speaker(speaker_emotions)
+        overall = self._compute_overall(timeline)
+        per_speaker = self._compute_per_speaker(speaker_emotions)
+
+        if overall:
+            print(f"[EmotionService] ✅ Complete: {len(timeline)} segments analyzed")
+            print(f"[EmotionService] 📊 Dominant emotion: {overall.get('dominant_emotion')}")
+            print(f"[EmotionService] 📊 Emotion distribution: {overall.get('emotion_distribution')}")
+        else:
+            print("[EmotionService] ⚠️ No emotions detected!")
 
         return EmotionReport(
             segments=enriched,
@@ -171,13 +199,13 @@ class EmotionService:
     def _compute_overall(timeline: List[dict]) -> Optional[dict]:
         if not timeline:
             return None
-        emotion_counts:   dict = defaultdict(int)
+        emotion_counts: dict = defaultdict(int)
         sentiment_counts: dict = defaultdict(int)
         for item in timeline:
-            emotion_counts[item["emotion"]]   += 1
+            emotion_counts[item["emotion"]] += 1
             sentiment_counts[item["sentiment"]] += 1
         return {
-            "dominant_emotion":       max(emotion_counts,   key=emotion_counts.get),
+            "dominant_emotion":       max(emotion_counts, key=emotion_counts.get),
             "dominant_sentiment":     max(sentiment_counts, key=sentiment_counts.get),
             "emotion_distribution":   dict(emotion_counts),
             "sentiment_distribution": dict(sentiment_counts),
@@ -193,7 +221,7 @@ class EmotionService:
             ec: dict = defaultdict(int)
             sc: dict = defaultdict(int)
             for e in emotions:
-                ec[e["emotion"]]   += 1
+                ec[e["emotion"]] += 1
                 sc[e["sentiment"]] += 1
             result[speaker] = {
                 "dominant_emotion":       max(ec, key=ec.get),
