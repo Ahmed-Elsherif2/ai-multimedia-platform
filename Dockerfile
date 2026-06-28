@@ -14,6 +14,15 @@ COPY . .
 
 RUN mkdir -p /app/data/uploads /app/data/results /app/data/status
 
+# ── Set Hugging Face cache to volume ──
+ENV HF_HOME=/root/.cache/huggingface
+ENV TRANSFORMERS_CACHE=/root/.cache/huggingface
+ENV HUGGINGFACE_HUB_CACHE=/root/.cache/huggingface
+
+# ── Preload models during build ──
+RUN echo "🚀 Preloading models during Docker build..." && \
+    python backend/preload.py
+
 ENV PYTHONUNBUFFERED=1
 ENV DATA_DIR=/app/data
 

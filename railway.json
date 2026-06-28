@@ -6,7 +6,7 @@
   "deploy": {
     "startCommand": "/bin/sh -c \"cd backend && gunicorn -w 4 -b 0.0.0.0:$PORT --timeout 1200 app:app\"",
     "healthcheckPath": "/api/health",
-    "healthcheckTimeout": 600,
+    "healthcheckTimeout": 900,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
