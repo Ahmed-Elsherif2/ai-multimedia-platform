@@ -35,6 +35,7 @@ def main():
     parser.add_argument("--output_dir", required=True)
     parser.add_argument("--whisper_model", default="base")
     parser.add_argument("--no-emotion", action="store_true")
+    parser.add_argument("--no-diarization", action="store_true", help="Skip speaker diarization (single-speaker fallback)")
     args = parser.parse_args()
 
     audio_path = Path(args.audio)
@@ -52,9 +53,17 @@ def main():
         from services.audio_extraction_service import audio_extraction_service
         wav_path = audio_extraction_service.prepare_wav(audio_path, output_dir)
 
-        # ── 2. Diarization ────────────────────────────────────────────────────────
-        from services.diarization_service import diarization_service
-        segments, speaker_segs, speaker_count = diarization_service.diarize(wav_path)
+        # ── 2. Diarization (skip if --no-diarization) ────────────────────────────
+        if args.no_diarization:
+            print("⚠️ Diarization disabled — using single-speaker fallback")
+            from services.audio_extraction_service import audio_extraction_service
+            duration = audio_extraction_service.get_duration(wav_path)
+            segments = [{"start": 0.0, "end": duration, "speaker": "SPEAKER_00"}]
+            speaker_segs = {"SPEAKER_00": segments}
+            speaker_count = 1
+        else:
+            from services.diarization_service import diarization_service
+            segments, speaker_segs, speaker_count = diarization_service.diarize(wav_path)
 
         # ── 3. Transcription ─────────────────────────────────────────────────────
         from services.transcription_service import transcription_service
@@ -93,7 +102,7 @@ def main():
             "speaker_count": speaker_count,
             "model_info": {
                 "whisper": args.whisper_model,
-                "diarization": "pyannote/speaker-diarization-3.1",
+                "diarization": "pyannote/speaker-diarization-3.1" if not args.no_diarization else "disabled",
                 "emotion": "SamLowe/roberta-base-go_emotions",
                 "sentiment": "distilbert-base-uncased-finetuned-sst-2-english",
             },

@@ -474,3 +474,25 @@ def get_user_chats(user_id: str = None) -> List[dict]:
         d["pinned"]   = bool(d["pinned"])
         result.append(d)
     return result
+
+# ── users (profile) ──────────────────────────────────────────────────────────
+
+def get_user(user_id: str) -> dict | None:
+    """Get user by ID with profile settings."""
+    db = get_db()
+    row = db.execute(
+        "SELECT id, username, diarization_enabled, created_at FROM users WHERE id = ?",
+        (user_id,)
+    ).fetchone()
+    return _row(row)
+
+
+def update_user_diarization(user_id: str, enabled: bool) -> bool:
+    """Update user's diarization preference."""
+    db = get_db()
+    cur = db.execute(
+        "UPDATE users SET diarization_enabled = ? WHERE id = ?",
+        (1 if enabled else 0, user_id)
+    )
+    db.commit()
+    return cur.rowcount > 0

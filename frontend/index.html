@@ -112,6 +112,18 @@
             <i class="fa-solid fa-hdd text-sm"></i> Storage Usage
           </button>
           <hr class="border-white/10 my-2">
+          <div class="px-2 py-2">
+            <div class="flex items-center justify-between">
+              <span class="text-xs text-slate-400">Speaker Diarization</span>
+              <label class="relative inline-flex items-center cursor-pointer">
+                <input type="checkbox" id="diarizationToggle" class="sr-only peer" checked>
+                <div class="w-9 h-5 bg-slate-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-teal-500"></div>
+              </label>
+            </div>
+            <div id="diarizationStatus" class="text-[10px] text-slate-500 mt-1">Identifies multiple speakers in audio</div>
+            <div id="diarizationWarning" class="text-[10px] text-amber-400 hidden mt-0.5">⚠️ May take 5+ minutes or timeout</div>
+          </div>
+          <hr class="border-white/10 my-2">
           <button type="button" id="resetDemoBtn" class="w-full flex items-center gap-3 cursor-pointer hover:bg-red-500/10 p-2 rounded-xl text-red-400 text-left transition-colors border-0 bg-transparent text-sm">
             <i class="fa-solid fa-rotate-left text-sm"></i> Reset Demo
           </button>

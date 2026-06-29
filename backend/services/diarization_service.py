@@ -7,6 +7,9 @@ AudioExtractionService.  This service focuses solely on diarization.
 from __future__ import annotations
 
 import os
+import subprocess
+import sys
+import json
 from pathlib import Path
 from typing import Dict, List, Optional, Tuple
 
@@ -22,6 +25,9 @@ class DiarizationService:
 
     The pipeline is lazy-loaded on first use and cached for the process
     lifetime — loading it involves a ~2 GB download on first run.
+    
+    If diarization is disabled by the user, or for short audio, falls back
+    to single-speaker mode.
     """
 
     def __init__(self):
@@ -55,16 +61,31 @@ class DiarizationService:
         log.info(f"loaded {settings.PYANNOTE_MODEL} on {device}")
         self._pipeline = p
 
+    def _is_pyannote_available(self) -> bool:
+        """Check if Pyannote is loaded and available."""
+        if self._pipeline is not None:
+            return True
+        try:
+            self._load()
+            return self._pipeline is not None
+        except Exception:
+            return False
+
     # ── Core diarization ─────────────────────────────────────────────────────
 
     def diarize(
-        self, audio_path: Path
+        self, audio_path: Path, user_id: str = None
     ) -> Tuple[List[dict], Dict[str, List[dict]], int]:
         """
         Run speaker diarization on *audio_path*.
 
         The input must be a WAV file; use AudioExtractionService.prepare_wav()
         to convert other formats first.
+
+        Smart fallback order:
+        1. If user has diarization disabled → single speaker
+        2. If audio < 16 seconds → single speaker
+        3. If Pyannote fails → single speaker
 
         Returns
         -------
@@ -74,9 +95,19 @@ class DiarizationService:
         """
         audio_path = Path(audio_path)
 
-        # ── Get audio duration for short audio fallback ─────────────────────
+        # ── Get audio duration ──────────────────────────────────────────────
         from services.audio_extraction_service import audio_extraction_service
         duration = audio_extraction_service.get_duration(audio_path)
+        log.info(f"audio duration: {duration:.2f}s")
+
+        # ── Check user preference for diarization ──────────────────────────
+        if user_id:
+            from database import queries
+            user = queries.get_user(user_id)
+            if user and not user.get("diarization_enabled", True):
+                log.info(f"⚠️ User has disabled diarization — using single-speaker fallback")
+                fallback = [{"start": 0.0, "end": round(duration, 2), "speaker": "SPEAKER_00"}]
+                return fallback, {"SPEAKER_00": fallback}, 1
 
         # ── Skip diarization for very short audio (< 16 seconds) ───────────
         if duration < 16:
@@ -84,6 +115,13 @@ class DiarizationService:
             fallback = [{"start": 0.0, "end": round(duration, 2), "speaker": "SPEAKER_00"}]
             return fallback, {"SPEAKER_00": fallback}, 1
 
+        # ── Check if Pyannote is available ──────────────────────────────────
+        if not self._is_pyannote_available():
+            log.warn("Pyannote not available — using single-speaker fallback")
+            fallback = [{"start": 0.0, "end": round(duration, 2), "speaker": "SPEAKER_00"}]
+            return fallback, {"SPEAKER_00": fallback}, 1
+
+        # ── If we get here, run Pyannote ──────────────────────────────────
         # If a non-WAV is passed, try an in-place conversion as a convenience
         wav_path: Optional[Path] = None
         if audio_path.suffix.lower() in {".mp4", ".mp3", ".m4a", ".mov", ".avi", ".mkv", ".webm"}:
@@ -101,7 +139,6 @@ class DiarizationService:
         speaker_segs: Dict[str, List] = {}
 
         try:
-            self._load()
             diarization = self._pipeline(str(audio_path))
             for turn, _, speaker in diarization.itertracks(yield_label=True):
                 seg = {"start": round(turn.start, 2), "end": round(turn.end, 2), "speaker": speaker}

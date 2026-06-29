@@ -71,6 +71,7 @@ def init_db() -> None:
             id         TEXT PRIMARY KEY,
             username   TEXT UNIQUE NOT NULL,
             password_hash TEXT NOT NULL,
+            diarization_enabled INTEGER DEFAULT 0,
             created_at TEXT
         );
 
@@ -133,4 +134,16 @@ def init_db() -> None:
     """)
     conn.commit()
     conn.close()
+    
+    # ── Add diarization_enabled column if it doesn't exist (for existing DBs) ──
+    try:
+        conn = sqlite3.connect(str(db_path))
+        conn.execute("ALTER TABLE users ADD COLUMN diarization_enabled INTEGER DEFAULT 0")
+        conn.commit()
+        conn.close()
+        print("[db] Added diarization_enabled column to users table")
+    except sqlite3.OperationalError:
+        # Column already exists
+        pass
+    
     print(f"[db] SQLite ready: {db_path}")

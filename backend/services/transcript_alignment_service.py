@@ -135,15 +135,28 @@ class TranscriptAlignmentService:
         timeline: List[dict],
         speaker_segs: Dict[str, List[dict]],
     ) -> str:
-        for ts in timeline:
-            if ts["start"] <= t < ts["end"]:
-                return ts["speaker"]
+        """Find the speaker at time t using the diarization timeline."""
+        
+        # ── If we have a timeline, find the speaker ──
         if timeline:
-            return min(
+            # First, try exact match
+            for ts in timeline:
+                # Add a small tolerance for edge cases
+                if ts["start"] - 0.1 <= t <= ts["end"] + 0.1:
+                    return ts["speaker"]
+            
+            # If no exact match, find the closest segment
+            closest = min(
                 timeline,
-                key=lambda ts: min(abs(ts["start"] - t), abs(ts["end"] - t)),
-            )["speaker"]
-        return list(speaker_segs.keys())[0] if speaker_segs else "SPEAKER_00"
+                key=lambda ts: min(abs(ts["start"] - t), abs(ts["end"] - t))
+            )
+            return closest["speaker"]
+        
+        # ── Fallback: use the first speaker ──
+        if speaker_segs:
+            return list(speaker_segs.keys())[0]
+        
+        return "SPEAKER_00"
 
     @staticmethod
     def _build_conversation(segments_with_text: List[dict]) -> List[dict]:

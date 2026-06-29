@@ -1,5 +1,5 @@
 """
-Authentication routes — login, register, logout.
+Authentication routes — login, register, logout, profile.
 """
 from __future__ import annotations
 
@@ -108,4 +108,46 @@ def me():
         "id": user["id"],
         "username": user["username"],
         "created_at": user["created_at"]
+    }), 200
+
+
+@auth_bp.route("/profile", methods=["GET"])
+def get_profile():
+    """Get user profile settings."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    user = queries.get_user(user_id)
+    if not user:
+        return jsonify({"error": "User not found"}), 404
+
+    return jsonify({
+        "id": user["id"],
+        "username": user["username"],
+        "diarization_enabled": bool(user.get("diarization_enabled", 1)),
+        "created_at": user.get("created_at")
+    }), 200
+
+
+@auth_bp.route("/profile", methods=["PUT"])
+def update_profile():
+    """Update user profile settings."""
+    user_id = session.get("user_id")
+    if not user_id:
+        return jsonify({"error": "Not authenticated"}), 401
+
+    data = request.json or {}
+    diarization_enabled = data.get("diarization_enabled")
+
+    if diarization_enabled is None:
+        return jsonify({"error": "diarization_enabled is required"}), 400
+
+    success = queries.update_user_diarization(user_id, bool(diarization_enabled))
+    if not success:
+        return jsonify({"error": "Failed to update profile"}), 500
+
+    return jsonify({
+        "success": True,
+        "diarization_enabled": bool(diarization_enabled)
     }), 200

@@ -50,11 +50,7 @@ class TranscriptionService:
         log.info("Groq Whisper API client ready")
 
     def transcribe(self, audio_path: Path) -> dict:
-        """
-        Transcribe audio using Groq's hosted Whisper API.
-        
-        Returns a dict compatible with OpenAI Whisper's output format.
-        """
+        """Transcribe audio using Groq's hosted Whisper API."""
         self._load()
         audio_path = Path(audio_path)
         log.info(f"transcribing {audio_path.name} via Groq Whisper API...")
@@ -66,6 +62,7 @@ class TranscriptionService:
                     model="whisper-large-v3-turbo",
                     response_format="verbose_json",
                     language="en",
+                    timestamp_granularities=["word", "segment"],
                 )
             
             # ── Convert Groq response to OpenAI-compatible format ──
@@ -75,25 +72,43 @@ class TranscriptionService:
                 "language": getattr(transcription, "language", "en"),
             }
             
-            # ── Check if transcription is a dict or object ──
+            # ── Process segments with word timestamps ──
             if hasattr(transcription, "segments") and transcription.segments:
                 for i, seg in enumerate(transcription.segments):
-                    # Handle if seg is a dict or object
                     if isinstance(seg, dict):
                         start = seg.get("start", 0.0)
                         end = seg.get("end", 0.0)
                         text = seg.get("text", "")
+                        words = seg.get("words", [])
                     else:
                         start = getattr(seg, "start", 0.0)
                         end = getattr(seg, "end", 0.0)
                         text = getattr(seg, "text", "")
+                        words = getattr(seg, "words", [])
+                    
+                    # ── Build words with timestamps ──
+                    word_list = []
+                    if words:
+                        for w in words:
+                            if isinstance(w, dict):
+                                word_list.append({
+                                    "word": w.get("word", ""),
+                                    "start": w.get("start", 0.0),
+                                    "end": w.get("end", 0.0)
+                                })
+                            else:
+                                word_list.append({
+                                    "word": getattr(w, "word", ""),
+                                    "start": getattr(w, "start", 0.0),
+                                    "end": getattr(w, "end", 0.0)
+                                })
                     
                     result["segments"].append({
                         "id": i,
                         "start": float(start),
                         "end": float(end),
                         "text": text,
-                        "words": [],
+                        "words": word_list,
                     })
             else:
                 # Fallback: treat entire text as one segment

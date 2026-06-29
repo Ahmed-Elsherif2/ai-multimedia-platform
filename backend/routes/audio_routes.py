@@ -130,7 +130,7 @@ def process_audio(file_id):
         
         # 1. Diarization first (will use fallback for short audio)
         print(f"[audio] Step 1: Diarization...")
-        segments, speaker_segs, speaker_count = diarization_service.diarize(audio_path)
+        segments, speaker_segs, speaker_count = diarization_service.diarize(audio_path, user_id=user_id)
         print(f"[audio] Diarization complete: {speaker_count} speaker(s), {len(segments)} segments")
         
         # 2. Transcription with alignment

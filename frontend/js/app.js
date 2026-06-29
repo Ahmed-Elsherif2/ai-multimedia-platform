@@ -5,6 +5,7 @@ const API_BASE = `${window.location.origin}/api`;
 // ─── Authentication ──────────────────────────────────────────────
 
 let currentUser = null;
+let profileSettings = null;
 
 async function checkAuth() {
   try {
@@ -73,6 +74,7 @@ async function loginUser() {
       if (nameEl) nameEl.textContent = currentUser.username;
       // Load user data
       await loadChats();
+      await loadProfileSettings();
       renderHistoryList();
       updateProcessBtn();
     } else {
@@ -123,6 +125,7 @@ async function registerUser() {
       const nameEl = document.getElementById('userDisplayName');
       if (nameEl) nameEl.textContent = currentUser.username;
       await loadChats();
+      await loadProfileSettings();
       renderHistoryList();
       updateProcessBtn();
     } else {
@@ -150,6 +153,76 @@ async function logoutUser() {
   if (nameEl) nameEl.textContent = 'Guest';  // or leave as 'Demo User' if you prefer
   document.getElementById('mainApp').classList.add('hidden');
   showLogin();
+}
+
+async function loadProfileSettings() {
+    try {
+        const response = await fetch(`${API_BASE}/auth/profile`, {
+            credentials: 'include'
+        });
+        if (response.ok) {
+            profileSettings = await response.json();
+            const toggle = document.getElementById('diarizationToggle');
+            
+            if (toggle) {
+                toggle.checked = profileSettings.diarization_enabled !== false;
+                updateDiarizationUI(toggle.checked);
+            }
+        }
+    } catch (e) {
+        console.warn('Could not load profile settings:', e);
+    }
+}
+
+function updateDiarizationUI(enabled) {
+    const warning = document.getElementById('diarizationWarning');
+    const status = document.getElementById('diarizationStatus');
+    
+    if (enabled) {
+        // ─── Diarization is ON ───
+        if (warning) {
+            warning.classList.remove('hidden');
+            warning.textContent = '⚠️ May take 5+ minutes or timeout for long audio';
+        }
+        if (status) {
+            status.textContent = 'Speaker diarization is ON (identifies multiple speakers)';
+            status.className = 'text-[10px] text-amber-400 mt-1';
+        }
+    } else {
+        // ─── Diarization is OFF ───
+        if (warning) {
+            warning.classList.add('hidden');
+        }
+        if (status) {
+            status.textContent = 'Speaker diarization is OFF (single-speaker fallback, fast)';
+            status.className = 'text-[10px] text-teal-400 mt-1';
+        }
+    }
+}
+
+async function saveDiarizationPreference(enabled) {
+    try {
+        const response = await fetch(`${API_BASE}/auth/profile`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ diarization_enabled: enabled }),
+            credentials: 'include'
+        });
+        
+        if (response.ok) {
+            const data = await response.json();
+            profileSettings = data;
+            updateDiarizationUI(enabled);
+            addActivity(enabled ? '✅ Speaker diarization enabled (may take 5+ min)' : '❌ Speaker diarization disabled (faster mode)', 'info');
+        } else {
+            throw new Error('Failed to save');
+        }
+    } catch (e) {
+        addActivity('Failed to save preference: ' + e.message, 'error');
+        // Revert toggle
+        const toggle = document.getElementById('diarizationToggle');
+        if (toggle) toggle.checked = !enabled;
+    }
 }
 
 let chats = [];
@@ -704,6 +777,7 @@ async function processSingleFile(fileId, fileName, chatId, type) {
     if (type === 'pdf') {
       await apiCall(`/summarize/${fileId}`, 'POST', null, false, 120000);
     } else {
+      // ─── Use the audio route's process endpoint (in-process, no subprocess) ───
       await apiCall(`/process/${fileId}`, 'POST', null, false, 660000);
     }
     
@@ -1668,6 +1742,14 @@ function bindEvents() {
     });
   }
 
+  // ─── Profile Toggle ──────────────────────────────────────────
+  const diarizationToggle = document.getElementById('diarizationToggle');
+  if (diarizationToggle) {
+      diarizationToggle.addEventListener('change', function() {
+          saveDiarizationPreference(this.checked);
+      });
+  }
+
   $('uploadAudioBtn')?.addEventListener('click', () => $('audioFileInput')?.click());
   $('uploadPdfBtn')?.addEventListener('click', () => $('pdfFileInput')?.click());
   $('audioFileInput')?.addEventListener('change', handleAudioUpload);
@@ -1698,8 +1780,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   if (user) {
     // User is logged in, proceed to load chats
     const ok = await checkBackendHealth();
-    if (ok) await loadChats();
-    else {
+    if (ok) {
+      await loadChats();
+      // ─── Load profile settings after login ───
+      await loadProfileSettings();
+    } else {
       addActivity('Backend offline — start server on port 5000', 'error');
       await loadChats();
     }

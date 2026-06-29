@@ -4,7 +4,7 @@ Transcript routes — backed by SQLite.
 GET  /api/transcripts/<file_id>    — fetch transcript
 GET  /api/transcript/<file_id>     — legacy singular alias
 GET  /api/file/<file_id>/status    — poll status
-POST /api/process/<file_id>        — backward-compat trigger
+POST /api/process_legacy/<file_id> — backward-compat trigger (subprocess)
 """
 from __future__ import annotations
 
@@ -98,7 +98,7 @@ def file_status(file_id):
 
 
 @transcript_bp.route("/process_legacy/<file_id>", methods=["POST", "OPTIONS"])
-def process_audio(file_id):
+def process_audio_legacy(file_id):
     """Backward-compat: trigger pipeline via subprocess, then save to SQLite."""
     if request.method == "OPTIONS":
         return "", 200
@@ -115,6 +115,10 @@ def process_audio(file_id):
     if not Path(audio_path).exists():
         return jsonify({"error": "Audio file missing from disk"}), 404
 
+    # Check user preference for diarization
+    user = queries.get_user(user_id) if user_id else None
+    diarization_enabled = user.get("diarization_enabled", True) if user else True
+
     if f.get("status") == "completed":
         t = queries.get_transcript(file_id)
         if t:
@@ -129,12 +133,22 @@ def process_audio(file_id):
 
         import os
         env = {**os.environ, "HF_TOKEN": settings.HF_TOKEN, "WHISPER_MODEL": settings.WHISPER_MODEL}
+        
+        # Build command
+        cmd = [
+            sys.executable, str(pipeline_script),
+            "--audio", audio_path,
+            "--output_dir", str(output_dir),
+            "--whisper_model", settings.WHISPER_MODEL,
+        ]
+        
+        # If diarization is disabled, skip it
+        if not diarization_enabled:
+            cmd.append("--no-diarization")
+            print(f"[transcript] ⚠️ Diarization disabled by user for {file_id}")
 
         proc = subprocess.run(
-            [sys.executable, str(pipeline_script),
-             "--audio", audio_path,
-             "--output_dir", str(output_dir),
-             "--whisper_model", settings.WHISPER_MODEL],
+            cmd,
             capture_output=True, text=True, encoding="utf-8", timeout=600, env=env,
         )
         if proc.returncode != 0:
